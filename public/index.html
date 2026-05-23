@@ -199,6 +199,71 @@
   .hint { font-size: 12px; color: var(--ink-soft); margin-top: 8px; line-height: 1.6; }
   .hint code { background: rgba(139, 26, 26, 0.08); padding: 1px 4px; border-radius: 2px; }
 
+  /* 模式选择（入口屏） */
+  .mode-toggle {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    background: #fff8e7; border: 1px solid var(--line); border-radius: 4px;
+    padding: 4px; margin-bottom: 12px;
+  }
+  .mode-toggle .opt {
+    padding: 10px 8px; text-align: center; font-size: 14px; cursor: pointer;
+    border-radius: 3px; letter-spacing: 0.15em; color: var(--ink-soft);
+    transition: all 0.15s;
+  }
+  .mode-toggle .opt.active {
+    background: linear-gradient(180deg, var(--red), var(--red-deep));
+    color: #fbe9c2; box-shadow: 0 1px 0 #3b0d0d;
+  }
+  .mode-toggle .opt .em { display: block; font-size: 18px; margin-bottom: 2px; }
+
+  /* 五子棋棋盘（嵌入式 + 浮层都用） */
+  .board-wrap {
+    background: linear-gradient(135deg, #d9b67a, #b8862a);
+    border: 2px solid var(--red-deep);
+    padding: 10px; border-radius: 6px;
+    box-shadow: 0 4px 14px var(--shadow);
+    position: relative;
+  }
+  .board-canvas {
+    display: block; width: 100%; max-width: 480px; margin: 0 auto;
+    background: #d9b67a;
+    border-radius: 4px;
+    touch-action: manipulation;
+  }
+  .board-info {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; margin-bottom: 8px;
+    background: rgba(43, 24, 16, 0.6); color: #fbe9c2;
+    border-radius: 4px; font-size: 13px;
+  }
+  .board-info .stone-icon {
+    display: inline-block; width: 14px; height: 14px;
+    border-radius: 50%; vertical-align: middle; margin-right: 4px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  .board-info .stone-icon.black { background: #1a1a1a; }
+  .board-info .stone-icon.white { background: #f5f5f0; border: 1px solid #888; }
+  .board-info .turn-tip { color: #ffd278; font-weight: bold; }
+  .board-info .timer { font-variant-numeric: tabular-nums; }
+  .duel-banner {
+    text-align: center; padding: 8px 10px; margin-bottom: 8px;
+    background: linear-gradient(180deg, #8b1a1a, #5b1a1a);
+    color: #fbe9c2; border-radius: 4px;
+    letter-spacing: 0.2em; font-size: 14px;
+  }
+
+  /* 五子棋全屏覆盖（陷害决斗） */
+  .duel-overlay {
+    position: fixed; inset: 0; background: rgba(43, 24, 16, 0.85);
+    z-index: 50; display: flex; align-items: center; justify-content: center;
+    padding: 12px; overflow-y: auto;
+  }
+  .duel-overlay .duel-panel {
+    background: linear-gradient(180deg, #f7ecd1, #ead7b2);
+    border: 2px solid var(--red-deep); border-radius: 6px;
+    padding: 14px; max-width: 540px; width: 100%;
+  }
+
   /* 极小屏适配（窄手机） */
   @media (max-width: 360px) {
     h1.title { font-size: 24px; }
@@ -215,8 +280,12 @@
 
   <!-- 入口屏 -->
   <section class="panel entry" id="screen-entry">
+    <div class="mode-toggle" id="mode-toggle">
+      <div class="opt active" data-mode="palace"><span class="em">👑</span>宫 斗 对 决</div>
+      <div class="opt" data-mode="gomoku"><span class="em">⚫</span>五 子 棋</div>
+    </div>
     <label class="field">
-      <span>入宫芳名</span>
+      <span id="name-label">入宫芳名</span>
       <input id="name-input" type="text" maxlength="8" placeholder="例：婉嫔" />
     </label>
     <label class="field" id="join-field" style="display:none">
@@ -231,7 +300,7 @@
       <button class="ghost" id="btn-back">返 回</button>
       <button class="primary" id="btn-join">入 房</button>
     </div>
-    <p class="hint">游戏规则：每月双方暗中选择一项动作，同步揭晓结算。先晋为皇后，或十五月内综合分高者胜。综合分 = 位分×100 + 圣宠 + 势力 + 名望 + 子嗣×50。</p>
+    <p class="hint" id="entry-hint">游戏规则：每月双方暗中选择一项动作，同步揭晓结算。先晋为皇后，或多月内综合分高者胜。陷害动作触发"棋决胜负"小局，连五子者陷害成功。</p>
   </section>
 
   <!-- 等待对手 -->
@@ -303,9 +372,61 @@
     </div>
   </section>
 
+  <!-- 五子棋独立模式屏 -->
+  <section id="screen-gomoku" style="display:none">
+    <div class="turn-bar">
+      <span>五 子 棋 · 第 <span id="g-round">1</span> 局</span>
+      <span id="g-phase-tip">开局</span>
+    </div>
+    <div class="players">
+      <div class="pcard you">
+        <h3><span id="g-you-name">你</span><span class="who" id="g-you-color">黑</span></h3>
+        <div class="stat">胜 <span class="v" id="g-you-score">0</span></div>
+      </div>
+      <div class="pcard">
+        <h3><span id="g-op-name">对手</span><span class="who" id="g-op-color">白</span></h3>
+        <div class="stat">胜 <span class="v" id="g-op-score">0</span></div>
+      </div>
+    </div>
+    <div class="board-wrap" id="g-board-wrap" style="margin-top: 12px;">
+      <div class="board-info">
+        <span><span class="stone-icon" id="g-cur-stone"></span><span id="g-cur-name">轮到</span></span>
+        <span class="timer" id="g-timer">--</span>
+      </div>
+      <canvas id="g-canvas" class="board-canvas"></canvas>
+    </div>
+    <div class="panel" style="margin-top: 12px; padding: 8px 10px;">
+      <div style="font-size:13px; color: var(--red-deep); letter-spacing: 0.2em; margin-bottom: 6px;">棋 谱 / 战 报</div>
+      <div class="log" id="g-log" style="max-height: 120px;"></div>
+    </div>
+    <div class="end-banner" id="g-end-banner" style="display:none">
+      <h2>本 局 已 终</h2>
+      <div class="winner" id="g-winner-name"></div>
+      <div style="margin-top: 12px;">
+        <button class="primary" id="g-btn-rematch" style="max-width: 200px; margin: 0 auto;">再 来 一 局</button>
+      </div>
+    </div>
+  </section>
+
   <p class="hint" style="text-align:center; margin-top: 18px;">
-    《后宫风云》 · 双人联机版 · v2.1
+    《后宫风云》 · 双人联机版 · v3.0 · <a href="/admin.html" style="color:var(--ink-soft); text-decoration: none;">管理</a>
   </p>
+</div>
+
+<!-- 陷害决斗浮层 -->
+<div class="duel-overlay" id="duel-overlay" style="display:none">
+  <div class="duel-panel">
+    <div class="duel-banner">⚔️ 棋 决 胜 负 · 五 子 连 珠 陷 害 ⚔️</div>
+    <div class="board-info">
+      <span><span class="stone-icon" id="d-cur-stone"></span><span id="d-cur-name">轮到</span></span>
+      <span class="timer" id="d-timer">--</span>
+    </div>
+    <canvas id="d-canvas" class="board-canvas"></canvas>
+    <p class="hint" style="text-align:center; margin-top: 8px;">
+      连五子者陷害成功，对方圣宠大损；输者陷害落空。<br>
+      超时即判负。
+    </p>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -340,6 +461,9 @@ let currentRoomCode = null;
 let lastState = null;
 let myChoice = null;
 let lastLogTotal = -1;
+let lastGLogTotal = -1;
+let selectedMode = 'palace';
+let timerHandle = null;
 
 function showToast(msg) {
   const t = $('toast');
@@ -350,15 +474,31 @@ function showToast(msg) {
 }
 
 function showScreen(name) {
-  $('screen-entry').style.display = name === 'entry' ? '' : 'none';
-  $('screen-lobby').style.display = name === 'lobby' ? '' : 'none';
-  $('screen-game').style.display  = name === 'game'  ? '' : 'none';
+  $('screen-entry').style.display  = name === 'entry'  ? '' : 'none';
+  $('screen-lobby').style.display  = name === 'lobby'  ? '' : 'none';
+  $('screen-game').style.display   = name === 'game'   ? '' : 'none';
+  $('screen-gomoku').style.display = name === 'gomoku' ? '' : 'none';
 }
+
+// ============== 模式切换 ==============
+document.querySelectorAll('#mode-toggle .opt').forEach((el) => {
+  el.onclick = () => {
+    document.querySelectorAll('#mode-toggle .opt').forEach((x) => x.classList.remove('active'));
+    el.classList.add('active');
+    selectedMode = el.dataset.mode;
+    $('name-label').textContent = selectedMode === 'gomoku' ? '棋手昵称' : '入宫芳名';
+    $('name-input').placeholder = selectedMode === 'gomoku' ? '例：黑子' : '例：婉嫔';
+    $('entry-hint').textContent = selectedMode === 'gomoku'
+      ? '五子棋规则：黑先白后，先连成五子者胜。每步 60 秒思考时间，超时即负。'
+      : '游戏规则：每月双方暗中选择一项动作，同步揭晓结算。先晋为皇后，或多月内综合分高者胜。陷害动作触发"棋决胜负"小局，连五子者陷害成功。';
+  };
+});
 
 // ============== 入口屏 ==============
 $('btn-create').onclick = () => {
-  const name = ($('name-input').value || '').trim() || '佳人';
-  socket.emit('create_room', { name });
+  const name = ($('name-input').value || '').trim()
+    || (selectedMode === 'gomoku' ? '棋手' : '佳人');
+  socket.emit('create_room', { name, mode: selectedMode });
 };
 $('btn-show-join').onclick = () => {
   $('join-field').style.display = '';
@@ -373,7 +513,8 @@ $('btn-back').onclick = () => {
   $('btn-show-join').parentElement.style.display = '';
 };
 $('btn-join').onclick = () => {
-  const name = ($('name-input').value || '').trim() || '佳人';
+  const name = ($('name-input').value || '').trim()
+    || (selectedMode === 'gomoku' ? '棋手' : '佳人');
   const code = ($('code-input').value || '').trim().toUpperCase();
   if (!code) { showToast('请输入房间号'); return; }
   socket.emit('join_room', { code, name });
@@ -512,6 +653,13 @@ function renderState(s) {
       return `<div>${line}</div>`;
     }).join('');
     logEl.scrollTop = logEl.scrollHeight;
+    if (lastLogTotal >= 0) {
+      const newLines = (s.log || []).slice(-(total - lastLogTotal));
+      for (const line of newLines) {
+        if (line.includes('晋封')) playSound('win');
+        else if (line.includes('诞下龙嗣')) playSound('event');
+      }
+    }
     lastLogTotal = total;
   }
 
@@ -535,22 +683,238 @@ function renderState(s) {
   renderActionButtons();
 }
 
+// ============== 五子棋棋盘绘制 ==============
+function drawBoard(canvasId, sub, opts) {
+  opts = opts || {};
+  const canvas = $(canvasId);
+  if (!canvas) return;
+  const board = sub.board;
+  const N = board.length;
+  // 维持 1:1，按容器宽度
+  const cssW = canvas.clientWidth || 320;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = cssW * dpr;
+  canvas.height = cssW * dpr;
+  canvas.style.height = cssW + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cssW, cssW);
+
+  // 背景
+  const grad = ctx.createLinearGradient(0, 0, cssW, cssW);
+  grad.addColorStop(0, '#dbb67a'); grad.addColorStop(1, '#c39855');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, cssW, cssW);
+
+  const margin = cssW * 0.05;
+  const grid = (cssW - margin * 2) / (N - 1);
+
+  // 网格线
+  ctx.strokeStyle = '#3b1f0f';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < N; i++) {
+    ctx.beginPath();
+    ctx.moveTo(margin, margin + i * grid);
+    ctx.lineTo(cssW - margin, margin + i * grid);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(margin + i * grid, margin);
+    ctx.lineTo(margin + i * grid, cssW - margin);
+    ctx.stroke();
+  }
+  // 星位（仅 N>=9）
+  if (N >= 9) {
+    const stars = N === 9
+      ? [[2,2],[2,6],[6,2],[6,6],[4,4]]
+      : [[3,3],[3,N-4],[N-4,3],[N-4,N-4],[Math.floor((N-1)/2), Math.floor((N-1)/2)]];
+    ctx.fillStyle = '#3b1f0f';
+    for (const [r, c] of stars) {
+      ctx.beginPath();
+      ctx.arc(margin + c * grid, margin + r * grid, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 棋子
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      if (board[r][c] === 0) continue;
+      const x = margin + c * grid;
+      const y = margin + r * grid;
+      const radius = grid * 0.42;
+      const isLast = sub.lastMove && sub.lastMove.row === r && sub.lastMove.col === c;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      if (board[r][c] === 1) {
+        const g = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 1, x, y, radius);
+        g.addColorStop(0, '#555'); g.addColorStop(1, '#0a0a0a');
+        ctx.fillStyle = g;
+      } else {
+        const g = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 1, x, y, radius);
+        g.addColorStop(0, '#fff'); g.addColorStop(1, '#cfcfc8');
+        ctx.fillStyle = g;
+      }
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+      // 最后一手红圈
+      if (isLast) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 0.3, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // 落子事件
+  canvas.onclick = (ev) => {
+    if (!opts.canPlay) return;
+    const rect = canvas.getBoundingClientRect();
+    const cx = ev.clientX - rect.left;
+    const cy = ev.clientY - rect.top;
+    const c = Math.round((cx - margin) / grid);
+    const r = Math.round((cy - margin) / grid);
+    if (r < 0 || r >= N || c < 0 || c >= N) return;
+    if (board[r][c] !== 0) { showToast('此处已有棋子'); return; }
+    socket.emit('place_stone', { row: r, col: c });
+    playSound('place');
+  };
+}
+
+function startTimer(deadline, elId) {
+  if (timerHandle) clearInterval(timerHandle);
+  const tick = () => {
+    const el = $(elId);
+    if (!el || !deadline) return;
+    const remain = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+    el.textContent = remain + ' s';
+    if (remain <= 5) el.style.color = '#ff7e7e'; else el.style.color = '#ffd278';
+  };
+  tick();
+  timerHandle = setInterval(tick, 500);
+}
+
+// ============== 简易音效（落子声 / 晋升声） ==============
+const sounds = {};
+function playSound(kind) {
+  try {
+    const ctx = playSound._ctx || (playSound._ctx = new (window.AudioContext || window.webkitAudioContext)());
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    if (kind === 'place') {
+      o.frequency.value = 880; o.type = 'square';
+      g.gain.setValueAtTime(0.1, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      o.start(); o.stop(ctx.currentTime + 0.1);
+    } else if (kind === 'win') {
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const oo = ctx.createOscillator(); const gg = ctx.createGain();
+        oo.connect(gg); gg.connect(ctx.destination);
+        oo.frequency.value = f; oo.type = 'triangle';
+        gg.gain.setValueAtTime(0.08, ctx.currentTime + i * 0.1);
+        gg.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.18);
+        oo.start(ctx.currentTime + i * 0.1);
+        oo.stop(ctx.currentTime + i * 0.1 + 0.2);
+      });
+    } else if (kind === 'event') {
+      o.frequency.value = 660; o.type = 'sine';
+      g.gain.setValueAtTime(0.06, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      o.start(); o.stop(ctx.currentTime + 0.22);
+    }
+  } catch (_) {}
+}
+
+// ============== 五子棋独立模式渲染 ==============
+function renderGomokuStandalone(s) {
+  $('g-you-name').textContent = (s.you && s.you.name) || '你';
+  $('g-op-name').textContent = (s.opponent && s.opponent.name) || '对手';
+  $('g-you-color').textContent = s.you && s.you.color === 1 ? '执黑' : (s.you && s.you.color === 2 ? '执白' : '—');
+  $('g-op-color').textContent = s.opponent && s.opponent.color === 1 ? '执黑' : (s.opponent && s.opponent.color === 2 ? '执白' : '—');
+  $('g-you-score').textContent = (s.you && s.you.score) || 0;
+  $('g-op-score').textContent = (s.opponent && s.opponent.score) || 0;
+
+  const tip = $('g-phase-tip');
+  if (!s.youHaveOpponent) tip.textContent = '等候对手…';
+  else if (s.phase === 'ended') tip.textContent = '本局已终';
+  else if (s.gomoku && s.gomoku.yourTurn) tip.textContent = '轮到你了';
+  else tip.textContent = '对手思考中…';
+
+  if (s.gomoku) {
+    const cur = s.gomoku.current;
+    $('g-cur-stone').className = 'stone-icon ' + (cur === 1 ? 'black' : 'white');
+    const curName = cur === s.you.color ? (s.you && s.you.name) : (s.opponent && s.opponent.name);
+    $('g-cur-name').textContent = '轮到 ' + (curName || '');
+    drawBoard('g-canvas', s.gomoku, { canPlay: !s.gomoku.winner && s.gomoku.yourTurn });
+    if (s.gomoku.deadline && s.phase === 'duel') startTimer(s.gomoku.deadline, 'g-timer');
+  }
+
+  // 棋谱日志
+  const logEl = $('g-log');
+  const total = s.logTotal ?? 0;
+  if (total !== lastGLogTotal) {
+    logEl.innerHTML = (s.log || []).map((line) => `<div>${line}</div>`).join('');
+    logEl.scrollTop = logEl.scrollHeight;
+    lastGLogTotal = total;
+  }
+
+  if (s.phase === 'ended') {
+    $('g-end-banner').style.display = '';
+    const w = s.gomoku && s.gomoku.winner;
+    let text = '';
+    if (w === 'draw') text = '和 局';
+    else if (w === s.you.color) text = (s.you.name || '你') + ' 胜';
+    else if (w) text = (s.opponent.name || '对手') + ' 胜';
+    else text = '局终';
+    $('g-winner-name').textContent = text;
+    if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+    if (w === s.you.color) playSound('win');
+  } else {
+    $('g-end-banner').style.display = 'none';
+  }
+}
+
 // ============== Socket 事件 ==============
-socket.on('joined', ({ code, role }) => {
+socket.on('joined', ({ code, role, mode }) => {
   currentRoomCode = code;
   $('room-code').textContent = code;
   if (role === 'host') {
     showScreen('lobby');
   } else {
-    showScreen('game');
+    showScreen(mode === 'gomoku' ? 'gomoku' : 'game');
   }
 });
 
 socket.on('state', (s) => {
   if (s.youHaveOpponent) {
+    if (s.mode === 'gomoku') {
+      showScreen('gomoku');
+      renderGomokuStandalone(s);
+      return;
+    }
     showScreen('game');
   }
   renderState(s);
+
+  // 陷害决斗浮层
+  if (s.mode === 'palace' && s.gomoku && s.gomoku.duel === 'sabotage') {
+    $('duel-overlay').style.display = '';
+    const cur = s.gomoku.current;
+    $('d-cur-stone').className = 'stone-icon ' + (cur === 1 ? 'black' : 'white');
+    const me = s.you;
+    const op = s.opponent;
+    let curName = cur === (me && me.rank !== undefined ? null : null) ? null : null;
+    // 直接用 yourTurn 判定显示
+    $('d-cur-name').textContent = s.gomoku.yourTurn ? '轮到你了' : '对手思考中';
+    drawBoard('d-canvas', s.gomoku, { canPlay: !s.gomoku.winner && s.gomoku.yourTurn });
+    if (s.gomoku.deadline) startTimer(s.gomoku.deadline, 'd-timer');
+  } else {
+    $('duel-overlay').style.display = 'none';
+  }
 });
 
 socket.on('error_msg', (msg) => showToast(msg));
@@ -560,6 +924,10 @@ socket.on('disconnect', () => showToast('连接已断开，请刷新重试'));
 $('btn-rematch').onclick = () => {
   myChoice = null;
   lastLogTotal = -1;
+  socket.emit('rematch');
+};
+$('g-btn-rematch').onclick = () => {
+  lastGLogTotal = -1;
   socket.emit('rematch');
 };
 </script>

@@ -23,3 +23,6 @@ palace-intrigue-game.bak.*
 
 # 测试输出
 /tmp/
+
+# 运行时配置（每个部署各自维护，从 config.default.json 初始化）
+config.json

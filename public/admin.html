@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>后宫风云 · 管理界面</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px; font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+         background: #f0e2c7; color: #2b1810; min-height: 100vh; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { color: #5b1a1a; letter-spacing: 0.4em; text-align: center; }
+  .panel { background: linear-gradient(180deg, #f7ecd1, #ead7b2);
+           border: 1px solid #8b6a3d; border-radius: 6px;
+           padding: 18px; margin-bottom: 14px;
+           box-shadow: 0 4px 12px rgba(60,30,10,0.15); }
+  label { display: block; margin: 8px 0 4px; font-size: 13px; color: #5b3a26; }
+  input[type=text], input[type=number], input[type=password], textarea {
+    width: 100%; padding: 8px; border: 1px solid #8b6a3d; border-radius: 4px;
+    background: #fff8e7; font-family: inherit; font-size: 14px;
+  }
+  textarea { font-family: ui-monospace, "Cascadia Mono", "Consolas", monospace; font-size: 12px; min-height: 280px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  button { padding: 10px 16px; cursor: pointer; border-radius: 4px;
+           font-family: inherit; letter-spacing: 0.1em; font-size: 14px; }
+  button.primary { background: linear-gradient(180deg, #8b1a1a, #5b1a1a);
+                   color: #fbe9c2; border: 1px solid #5b1a1a; }
+  button.ghost { background: #fff8e7; color: #5b1a1a; border: 1px solid #8b6a3d; }
+  button.danger { background: linear-gradient(180deg, #b54040, #6b1a1a);
+                  color: #fff; border: 1px solid #5b1a1a; }
+  .promote-row { display: grid; grid-template-columns: 60px repeat(4, 1fr); gap: 6px; align-items: center;
+                 font-size: 13px; padding: 4px 0; }
+  .promote-row .lbl { color: #5b3a26; text-align: right; padding-right: 8px; }
+  .promote-row input { padding: 6px 4px; font-size: 13px; text-align: center; }
+  .toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%);
+           background: rgba(43,24,16,0.92); color: #fbe9c2;
+           padding: 10px 18px; border-radius: 4px; opacity: 0; pointer-events: none;
+           transition: opacity 0.25s; max-width: 80%; }
+  .toast.show { opacity: 1; }
+  .stats { font-size: 13px; color: #5b3a26; margin: 8px 0; }
+  .stats span { display: inline-block; padding: 4px 10px; background: #fff8e7;
+                border: 1px solid #8b6a3d; border-radius: 3px; margin-right: 6px; }
+  details summary { cursor: pointer; padding: 6px; color: #5b1a1a; font-weight: bold; }
+  .small { font-size: 12px; color: #5b3a26; line-height: 1.6; }
+  a { color: #5b1a1a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>后 宫 风 云 · 管 理</h1>
+
+<div class="panel" id="login-panel">
+  <p>请输入管理 Token（默认是 <code>CHANGE_ME_NOW</code>，登录后立即修改）：</p>
+  <input id="tk-input" type="password" placeholder="管理 Token" />
+  <div class="actions">
+    <button class="primary" id="btn-login">登 录</button>
+    <a href="/" style="margin-left:auto; align-self:center;">返回游戏</a>
+  </div>
+  <p class="small">默认 token 在 config.default.json 里。第一次登录后请修改下方 adminToken 字段并保存，再重新登录。</p>
+</div>
+
+<div id="main-panel" style="display:none">
+
+  <div class="panel">
+    <div class="stats" id="stats-bar"></div>
+    <div class="actions">
+      <button class="ghost" id="btn-refresh">刷新</button>
+      <button class="ghost" id="btn-stats">查看在线统计</button>
+      <button class="primary" id="btn-save">保 存</button>
+      <button class="danger" id="btn-reset">重置为默认</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3 style="margin-top:0">称谓 / 称呼</h3>
+    <div class="row">
+      <label>皇帝称呼<input id="f-emperor" type="text" placeholder="圣上 / 乾隆 / 陛下" /></label>
+      <label>朝代名<input id="f-dynasty" type="text" placeholder="大启王朝" /></label>
+      <label>妃嫔自称<input id="f-concubineLabel" type="text" placeholder="佳人 / 娘娘" /></label>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3 style="margin-top:0">宫斗参数</h3>
+    <div class="row">
+      <label>总月数（5-30）<input id="f-maxTurns" type="number" min="5" max="30" /></label>
+      <label>每月体力恢复<input id="f-energyRegen" type="number" min="1" max="30" /></label>
+      <label>初始圣宠<input id="f-startFavor" type="number" min="0" max="100" /></label>
+      <label>初始名望<input id="f-startReputation" type="number" min="0" max="100" /></label>
+      <label>初始体力<input id="f-startEnergy" type="number" min="20" max="100" /></label>
+      <label>随机事件几率（%）<input id="f-randomEventChance" type="number" min="0" max="100" /></label>
+    </div>
+    <label>子嗣可用名（逗号分隔）<input id="f-childNames" type="text" /></label>
+
+    <details>
+      <summary>晋升门槛（圣宠/势力/名望/子嗣）</summary>
+      <div id="promote-grid" style="margin-top: 8px;">
+        <div class="promote-row" style="font-weight:bold; color:#5b1a1a">
+          <span class="lbl">阶段</span><span style="text-align:center">圣宠</span><span style="text-align:center">势力</span><span style="text-align:center">名望</span><span style="text-align:center">子嗣</span>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <h3 style="margin-top:0">五子棋设置</h3>
+    <div class="row">
+      <label>棋盘大小（9 / 15）<input id="f-boardSize" type="number" min="9" max="19" /></label>
+      <label>每步思考秒数<input id="f-moveTimeout" type="number" min="10" max="180" /></label>
+    </div>
+    <label><input id="f-sabotageDuel" type="checkbox" /> 陷害动作触发五子棋决斗</label>
+  </div>
+
+  <div class="panel">
+    <h3 style="margin-top:0">管理 Token（修改后请重新登录）</h3>
+    <label>新 Token<input id="f-adminToken" type="text" /></label>
+  </div>
+
+  <details>
+    <summary>高级：直接编辑 JSON</summary>
+    <div class="panel"><textarea id="raw-json" spellcheck="false"></textarea></div>
+  </details>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let currentToken = '';
+let currentCfg = null;
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function api(method, path, body) {
+  const opt = {
+    method,
+    headers: { 'X-Admin-Token': currentToken, 'Content-Type': 'application/json' },
+  };
+  if (body !== undefined) opt.body = JSON.stringify(body);
+  const r = await fetch(path, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+
+$('btn-login').onclick = async () => {
+  currentToken = $('tk-input').value.trim();
+  if (!currentToken) { toast('请输入 Token'); return; }
+  try {
+    const j = await api('GET', '/api/admin/config');
+    currentCfg = j.config;
+    $('login-panel').style.display = 'none';
+    $('main-panel').style.display = '';
+    fillForm(currentCfg);
+    toast('登录成功');
+  } catch (e) { toast(e.message); }
+};
+
+function fillForm(c) {
+  $('f-emperor').value = c.appellation.emperor;
+  $('f-dynasty').value = c.appellation.dynasty;
+  $('f-concubineLabel').value = c.appellation.concubineLabel;
+  $('f-maxTurns').value = c.palace.maxTurns;
+  $('f-energyRegen').value = c.palace.energyRegen;
+  $('f-startFavor').value = c.palace.startFavor;
+  $('f-startReputation').value = c.palace.startReputation;
+  $('f-startEnergy').value = c.palace.startEnergy;
+  $('f-randomEventChance').value = c.palace.randomEventChance;
+  $('f-childNames').value = (c.palace.childNames || []).join(',');
+  $('f-boardSize').value = c.gomoku.boardSize;
+  $('f-moveTimeout').value = c.gomoku.moveTimeoutSec;
+  $('f-sabotageDuel').checked = !!c.gomoku.sabotageDuel;
+  $('f-adminToken').value = c.adminToken;
+  // 晋升门槛
+  const RANK_LABELS = ['答应→常在','常在→贵人','贵人→嫔','嫔→妃','妃→贵妃','贵妃→皇贵妃','皇贵妃→皇后'];
+  const grid = $('promote-grid');
+  grid.querySelectorAll('.promote-row.editable').forEach((el) => el.remove());
+  c.palace.promoteRequirements.forEach((req, i) => {
+    const row = document.createElement('div');
+    row.className = 'promote-row editable';
+    row.innerHTML = `
+      <span class="lbl">${RANK_LABELS[i]}</span>
+      <input type="number" data-idx="${i}" data-key="favor" value="${req.favor}" min="0" max="100" />
+      <input type="number" data-idx="${i}" data-key="power" value="${req.power}" min="0" max="100" />
+      <input type="number" data-idx="${i}" data-key="rep" value="${req.rep}" min="0" max="100" />
+      <input type="number" data-idx="${i}" data-key="children" value="${req.children}" min="0" max="9" />
+    `;
+    grid.appendChild(row);
+  });
+  $('raw-json').value = JSON.stringify(c, null, 2);
+}
+
+function collectForm() {
+  let cfg = JSON.parse(JSON.stringify(currentCfg));
+  cfg.appellation.emperor = $('f-emperor').value.trim() || '圣上';
+  cfg.appellation.dynasty = $('f-dynasty').value.trim() || '大启';
+  cfg.appellation.concubineLabel = $('f-concubineLabel').value.trim() || '佳人';
+  cfg.palace.maxTurns = +$('f-maxTurns').value;
+  cfg.palace.energyRegen = +$('f-energyRegen').value;
+  cfg.palace.startFavor = +$('f-startFavor').value;
+  cfg.palace.startReputation = +$('f-startReputation').value;
+  cfg.palace.startEnergy = +$('f-startEnergy').value;
+  cfg.palace.randomEventChance = +$('f-randomEventChance').value;
+  cfg.palace.childNames = $('f-childNames').value.split(/[,，、\s]+/).filter(Boolean);
+  cfg.gomoku.boardSize = +$('f-boardSize').value;
+  cfg.gomoku.moveTimeoutSec = +$('f-moveTimeout').value;
+  cfg.gomoku.sabotageDuel = $('f-sabotageDuel').checked;
+  cfg.adminToken = $('f-adminToken').value.trim();
+  // 晋升门槛
+  document.querySelectorAll('#promote-grid .promote-row.editable input').forEach((el) => {
+    const idx = +el.dataset.idx, key = el.dataset.key;
+    cfg.palace.promoteRequirements[idx][key] = +el.value;
+  });
+  return cfg;
+}
+
+$('btn-save').onclick = async () => {
+  let cfg;
+  try {
+    // 优先用高级 JSON 编辑器（如果用户改过）
+    const raw = $('raw-json').value.trim();
+    const fromForm = collectForm();
+    const fromJson = JSON.parse(raw);
+    // 用户最后修改谁占优？粗略策略：以表单为准
+    cfg = fromForm;
+  } catch (e) {
+    toast('JSON 解析失败：' + e.message); return;
+  }
+  try {
+    await api('POST', '/api/admin/config', { config: cfg });
+    currentCfg = cfg;
+    fillForm(cfg);
+    toast('已保存。新房间将使用新参数（已开始的对局沿用旧参数）');
+  } catch (e) { toast('保存失败：' + e.message); }
+};
+
+$('btn-refresh').onclick = async () => {
+  try {
+    const j = await api('GET', '/api/admin/config');
+    currentCfg = j.config;
+    fillForm(currentCfg);
+    toast('已刷新');
+  } catch (e) { toast(e.message); }
+};
+
+$('btn-reset').onclick = async () => {
+  if (!confirm('确定重置为默认配置？这会丢失你之前的修改')) return;
+  try {
+    await api('POST', '/api/admin/reset', {});
+    const j = await api('GET', '/api/admin/config');
+    currentCfg = j.config;
+    fillForm(currentCfg);
+    toast('已重置为默认');
+  } catch (e) { toast(e.message); }
+};
+
+$('btn-stats').onclick = async () => {
+  try {
+    const j = await api('GET', '/api/admin/stats');
+    $('stats-bar').innerHTML = `
+      <span>总房间：${j.rooms}</span>
+      <span>宫斗：${j.palaceRooms}</span>
+      <span>五子棋：${j.gomokuRooms}</span>
+      <span>对局中：${j.activeRooms}</span>
+    `;
+  } catch (e) { toast(e.message); }
+};
+
+$('tk-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-login').click(); });
+</script>
+</body>
+</html>

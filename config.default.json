@@ -1,0 +1,39 @@
+{
+  "_comment": "默认配置。运行时会复制到 config.json，admin 后台修改的是 config.json。删除 config.json 即恢复默认。",
+
+  "adminToken": "CHANGE_ME_NOW",
+
+  "appellation": {
+    "emperor": "圣上",
+    "dynasty": "大启王朝",
+    "concubineLabel": "佳人"
+  },
+
+  "palace": {
+    "maxTurns": 15,
+    "energyRegen": 8,
+    "startFavor": 30,
+    "startReputation": 25,
+    "startEnergy": 100,
+    "randomEventChance": 25,
+    "promoteRequirements": [
+      { "favor": 25, "power": 0,  "rep": 0,  "children": 0 },
+      { "favor": 40, "power": 15, "rep": 15, "children": 0 },
+      { "favor": 50, "power": 25, "rep": 25, "children": 0 },
+      { "favor": 60, "power": 40, "rep": 35, "children": 0 },
+      { "favor": 65, "power": 55, "rep": 45, "children": 0 },
+      { "favor": 70, "power": 65, "rep": 55, "children": 0 },
+      { "favor": 80, "power": 80, "rep": 70, "children": 1 }
+    ],
+    "childNames": [
+      "皓宁", "琰宁", "瑞宁", "嘉柔", "婉清", "鸿煊", "瑞泽",
+      "炳辰", "韶华", "静姝", "清月", "怀瑾", "永琪", "弘历"
+    ]
+  },
+
+  "gomoku": {
+    "boardSize": 9,
+    "moveTimeoutSec": 25,
+    "sabotageDuel": true
+  }
+}

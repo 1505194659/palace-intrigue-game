@@ -1,11 +1,15 @@
-# 后宫风云 · 双人联机宫斗游戏
+# 后宫风云 · 双人联机宫斗游戏 v3.0
 
-一个 HTML5 双人联机的宫斗回合制小游戏。手机浏览器即可游玩，无需安装。
+一个 HTML5 双人联机的宫斗回合制小游戏，附带五子棋对决。手机浏览器即可游玩，无需安装。
 
-- **前端**：单页 HTML + 原生 CSS/JS（古风 UI，emoji 立绘）
+- **前端**：单页 HTML + 原生 CSS/JS（古风 UI，emoji 立绘 + Canvas 棋盘）
 - **后端**：Node.js + Express + Socket.IO
 - **联机**：5 位房间号匹配，房主创建后把房号发给朋友即可
-- **玩法**：每月双方暗中选择动作，同步揭晓结算；十月内综合分高者胜，先成皇后立刻获胜
+- **两种模式**：
+  - **宫斗对决**：每月双方暗中选动作，同步揭晓；先晋皇后或多月内综合分高者胜
+  - **五子棋**：黑先白后，先连五子者胜，每步限时
+- **特殊机制 · 棋决胜负**：宫斗模式中，谁选了「设陷害」就触发五子棋决斗，连五子者陷害成功
+- **管理后台**：`/admin.html` 可修改皇帝名/朝代/月份/晋升门槛/子嗣名等所有参数
 
 ---
 
@@ -26,7 +30,18 @@
 
 **位分**：答应 → 常在 → 贵人 → 嫔 → 妃 → 贵妃 → 皇贵妃 → 皇后
 
-**胜负**：先晋为皇后立胜；否则 10 月后比较综合分 = `位分×100 + 圣宠 + 势力 + 子嗣×50`。
+**胜负**：先晋为皇后立胜；否则 15 月（可在管理后台调整）后比较综合分 = `位分×100 + 圣宠 + 势力 + 名望 + 子嗣×50`。
+
+---
+
+## v3.0 新增
+
+- ⚫ **五子棋独立模式**：在入口屏切换到"五子棋"，9×9 棋盘，先连五子者胜
+- ⚔️ **棋决胜负（陷害决斗）**：宫斗中触发陷害动作时，弹出五子棋小局，胜者成功削对方圣宠
+- 🛠️ **管理后台 `/admin.html`**：用 Token 登录后修改所有游戏参数（皇帝名、朝代、月份、晋升门槛、子嗣名、棋盘大小、思考时长等）
+- 📜 **配置系统**：`config.default.json` 是默认值，`config.json` 是运行时配置（不入 git，每个部署独立）
+- 🔊 **音效**：落子声、晋封喜庆声、生子提示音
+- 📊 **统计接口**：`/api/admin/stats` 查看在线房间数
 
 ---
 
@@ -136,14 +151,35 @@ pm2 startup    # 设置开机自启（按提示执行）
 
 ```
 palace-intrigue-game/
-├── package.json        # 依赖声明
-├── server.js           # 后端：房间匹配 + 回合结算（权威）
+├── package.json            # 依赖声明
+├── server.js               # 网络层：房间 + Socket.IO + admin REST API
+├── game.js                 # 宫斗纯逻辑（无网络依赖，便于测试）
+├── gomoku.js               # 五子棋纯逻辑
+├── config.js               # 配置加载/保存模块
+├── config.default.json     # 默认配置（git 跟踪）
+├── config.json             # 运行时配置（不入 git，admin 后台修改它）
+├── deploy.sh               # 部署脚本（基于 GitHub）
+├── test-game.js            # 宫斗逻辑单测（33000+ 断言）
+├── test-gomoku.js          # 五子棋单测
+├── test-network.js         # 网络层端到端测试
+├── test-integration.js     # v3.0 集成测试（admin/五子棋/陷害决斗）
 ├── public/
-│   └── index.html      # 前端单文件（HTML+CSS+JS+ Socket.IO）
-└── README.md           # 本文档
+│   ├── index.html          # 玩家前端
+│   └── admin.html          # 管理后台
+└── README.md
 ```
 
-服务端是游戏的"权威"，所有数值变化都在 `server.js::resolveTurn` 与 `applyAction` 里计算，前端只负责呈现，因此无法通过改前端作弊。
+服务端是游戏的"权威"，所有数值变化都在 `game.js::resolveTurn / applyAction` 里计算，前端只负责呈现，无法通过改前端作弊。
+
+## 跑测试
+
+```bash
+node test-game.js          # 宫斗逻辑（200 场随机对局 + 边界回归）
+node test-gomoku.js        # 五子棋逻辑
+node test-integration.js   # 集成测试（自动起 server）
+# test-network.js 需要 server 已运行：
+PORT=3010 node server.js & sleep 1 && PORT=3010 node test-network.js
+```
 
 ## License
 
