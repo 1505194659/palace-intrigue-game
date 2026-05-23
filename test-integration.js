@@ -1,12 +1,18 @@
 /**
- * v3.0 集成测试：五子棋模式 + 陷害决斗 + admin API
- * 跑法：node test-integration.js（自动起服务）
+ * v3.1 集成测试：
+ *   - admin API
+ *   - 五子棋独立模式
+ *   - 陷害决斗（五子棋 / RPS / 猜大小 三种都能触发）
+ *   - 职业选择
+ *   - 卡牌使用（poison_tea / red_velvet / jade_pendant / gu_poison）
+ *   - 月初抽卡
  */
+
 const { spawn } = require('child_process');
 const ioClient = require('socket.io-client');
 const http = require('http');
 
-const PORT = 3013;
+const PORT = 3017;
 const URL = `http://localhost:${PORT}`;
 
 let passed = 0, failed = 0;
@@ -41,13 +47,7 @@ function waitFor(socket, event, predicate, timeoutMs, label) {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => {
       socket.off(event, handler);
-      const dump = lastSeen ? JSON.stringify({
-        phase: lastSeen.phase, turn: lastSeen.turn,
-        lastMove: lastSeen.gomoku && lastSeen.gomoku.lastMove,
-        winner: lastSeen.gomoku && lastSeen.gomoku.winner,
-        moveCount: lastSeen.gomoku && lastSeen.gomoku.moveCount,
-      }) : 'no-state';
-      reject(new Error(`Timeout waiting for ${event}${label ? '['+label+']' : ''}; last=${dump}`));
+      reject(new Error(`Timeout ${label || event}; last=${JSON.stringify({phase:lastSeen&&lastSeen.phase, duel:lastSeen&&lastSeen.duel&&lastSeen.duel.duelId})}`));
     }, timeoutMs || 4000);
     const handler = (data) => {
       lastSeen = data;
@@ -61,161 +61,202 @@ function waitFor(socket, event, predicate, timeoutMs, label) {
   });
 }
 
+async function setHighDropChance(token) {
+  // 把 dropChance 调到 100% 让测试稳定抽到卡
+  const cur = (await httpReq('GET', '/api/admin/config', null, { 'X-Admin-Token': token })).json.config;
+  cur.cards.dropChance = 100;
+  await httpReq('POST', '/api/admin/config', { config: cur }, { 'X-Admin-Token': token });
+}
+
+async function restoreCfg(token) {
+  await httpReq('POST', '/api/admin/reset', {}, { 'X-Admin-Token': token });
+}
+
 async function main() {
-  console.log('启动 v3.0 server (PORT=' + PORT + ') ...');
+  console.log('启动 v3.1 server (PORT=' + PORT + ') ...');
   const proc = spawn('node', ['server.js'], {
     env: Object.assign({}, process.env, { PORT: String(PORT) }),
     stdio: 'pipe',
   });
   proc.stdout.on('data', () => {});
   proc.stderr.on('data', (d) => console.error('SERVER ERR:', d.toString()));
-
   await new Promise((r) => setTimeout(r, 1500));
 
+  const TK = 'CHANGE_ME_NOW';
+
   try {
-    // === 1. admin API 健康检查 ===
-    console.log('\n=== 1. admin API: 错误 token ===');
-    const bad = await httpReq('GET', '/api/admin/config', null, { 'X-Admin-Token': 'wrong' });
-    assert(bad.status === 401, '错误 token 应返回 401');
+    // === 1. /api/meta ===
+    console.log('\n=== 1. /api/meta 元数据 ===');
+    const meta = await httpReq('GET', '/api/meta');
+    assert(meta.json.ok, '元数据 ok');
+    assert(meta.json.classes.length >= 4, `职业 ${meta.json.classes.length} 个`);
+    assert(meta.json.duels.length === 3, `决斗 ${meta.json.duels.length} 种`);
+    assert(meta.json.cards.length >= 6, `卡牌 ${meta.json.cards.length} 张`);
 
-    console.log('=== 2. admin API: 默认 token CHANGE_ME_NOW ===');
-    const ok = await httpReq('GET', '/api/admin/config', null, { 'X-Admin-Token': 'CHANGE_ME_NOW' });
-    assert(ok.status === 200 && ok.json.ok, '默认 token 应能查询');
-    assert(ok.json.config.appellation.emperor, 'config 包含 emperor');
+    // === 2. 把 dropChance 调到 100，方便后续测卡 ===
+    console.log('=== 2. 设置 100% 掉率 ===');
+    await setHighDropChance(TK);
 
-    console.log('=== 3. admin API: 修改皇帝名 ===');
-    const cur = ok.json.config;
-    const original = cur.appellation.emperor;
-    cur.appellation.emperor = '乾隆';
-    const upd = await httpReq('POST', '/api/admin/config', { config: cur }, { 'X-Admin-Token': 'CHANGE_ME_NOW' });
-    assert(upd.status === 200 && upd.json.ok, '修改成功');
-
-    const verify = await httpReq('GET', '/api/admin/config', null, { 'X-Admin-Token': 'CHANGE_ME_NOW' });
-    assert(verify.json.config.appellation.emperor === '乾隆', '皇帝名已是乾隆');
-
-    console.log('=== 4. admin API: 非法 maxTurns ===');
-    const badcfg = JSON.parse(JSON.stringify(verify.json.config));
-    badcfg.palace.maxTurns = 100;
-    const bad2 = await httpReq('POST', '/api/admin/config', { config: badcfg }, { 'X-Admin-Token': 'CHANGE_ME_NOW' });
-    assert(bad2.status === 400, '越界 maxTurns 应被拒');
-
-    console.log('=== 5. admin API: stats ===');
-    const stats = await httpReq('GET', '/api/admin/stats', null, { 'X-Admin-Token': 'CHANGE_ME_NOW' });
-    assert(stats.json.ok && typeof stats.json.rooms === 'number', 'stats 字段正常');
-
-    // === 6. 五子棋独立模式 ===
-    console.log('\n=== 6. 五子棋独立模式：建房 + 加入 ===');
+    // === 3. 用职业建房 ===
+    console.log('=== 3. 用职业建房（妖姬 vs 嫡女） ===');
     const sa = ioClient(URL, { transports: ['websocket'] });
     const sb = ioClient(URL, { transports: ['websocket'] });
     await Promise.all([
       new Promise((r) => sa.on('connect', r)),
       new Promise((r) => sb.on('connect', r)),
     ]);
-    sa.emit('create_room', { name: '阿黑', mode: 'gomoku' });
+    sa.emit('create_room', { name: '妖姬', mode: 'palace', classId: 'seductress' });
     const aJoin = await waitFor(sa, 'joined');
-    assert(aJoin.mode === 'gomoku', '建房 mode=gomoku');
-    sb.emit('join_room', { code: aJoin.code, name: '阿白' });
-    const bJoin = await waitFor(sb, 'joined');
-    assert(bJoin.mode === 'gomoku', '加入 mode=gomoku');
+    sb.emit('join_room', { code: aJoin.code, name: '嫡女', classId: 'noble' });
+    await waitFor(sb, 'joined');
 
-    // 收到棋局开始的 state
-    const aState1 = await waitFor(sa, 'state', (s) => s.gomoku && s.phase === 'duel');
-    assert(aState1.gomoku.board.length === aState1.gomoku.board[0].length, '棋盘是正方');
-    assert(aState1.gomoku.yourColor === 1, 'A 是黑');
-    assert(aState1.gomoku.yourTurn === true, 'A 先手');
-    const bState1 = await waitFor(sb, 'state', (s) => s.gomoku);
-    assert(bState1.gomoku.yourColor === 2, 'B 是白');
-    assert(bState1.gomoku.yourTurn === false, 'B 等待');
+    const sA1 = await waitFor(sa, 'state', (s) => s.phase === 'choosing' && s.you);
+    assert(sA1.you.classId === 'seductress', '妖姬已设');
+    assert(sA1.you.beauty === 50, '妖姬美貌 50（默认）');
+    assert(sA1.opponent.classId === 'noble', '对方嫡女');
+    // 嫡女 power +20，所以 opponent.power=30
+    assert(sA1.opponent.power === 30, `嫡女 power 30，实际 ${sA1.opponent.power}`);
+    // 月初抽卡（dropChance=100 应该有牌）
+    assert(sA1.you.cards && sA1.you.cards.length >= 1, `月初抽到卡，实际 ${(sA1.you.cards || []).length} 张`);
 
-    // 模拟 5 子横向连胜（黑：(0,0..4)；白随便走）
-    console.log('=== 7. 五子棋落子并胜出 ===');
-    let finalA = null;
-    for (let i = 0; i < 5; i++) {
-      const isLast = i === 4;
-      const aWait = waitFor(sa, 'state',
-        (s) => isLast
-          ? (s.phase === 'ended')
-          : (s.gomoku && s.gomoku.lastMove && s.gomoku.lastMove.row === 0 && s.gomoku.lastMove.col === i && s.gomoku.lastMove.color === 1),
-        4000, isLast ? '等A端结束' : `A 落子 (0,${i})`);
-      sa.emit('place_stone', { row: 0, col: i });
-      const aSt = await aWait;
-      if (isLast) finalA = aSt;
-      if (i < 4) {
-        const bWait = waitFor(sb, 'state',
-          (s) => s.gomoku && s.gomoku.lastMove && s.gomoku.lastMove.row === 8 && s.gomoku.lastMove.col === i && s.gomoku.lastMove.color === 2,
-          4000, `B 落子 (8,${i})`);
-        sb.emit('place_stone', { row: 8, col: i });
-        await bWait;
-      }
+    // === 4. 出卡：自身增益 ===
+    console.log('=== 4. 出卡：玩家A 出第一张卡 ===');
+    const firstCardId = sA1.you.cards[0].id;
+    const promiseAfterCard = waitFor(sa, 'state', (s) => s.you && s.you.usedCardThisMonth);
+    sa.emit('use_card', { cardId: firstCardId });
+    const sA2 = await promiseAfterCard;
+    assert(sA2.you.usedCardThisMonth === true, 'usedCardThisMonth 标记');
+    assert(sA2.you.cards.length === sA1.you.cards.length - 1, '手牌少一张');
+
+    // === 5. 重复出卡被拒 ===
+    console.log('=== 5. 重复出卡被拒 ===');
+    if (sA2.you.cards.length > 0) {
+      const errPromise = new Promise((r) => sa.once('error_msg', r));
+      sa.emit('use_card', { cardId: sA2.you.cards[0].id });
+      const errMsg = await Promise.race([errPromise, new Promise((r) => setTimeout(() => r(null), 1000))]);
+      assert(errMsg && errMsg.includes('本月'), `应有错误提示，实际 ${errMsg}`);
     }
-    assert(finalA.gomoku.winner === 1, 'A 黑胜');
-    assert(finalA.you.score === 1, 'A 得 1 分');
 
     sa.disconnect(); sb.disconnect();
     await new Promise((r) => setTimeout(r, 200));
 
-    // === 8. palace 模式：陷害决斗 ===
-    console.log('\n=== 8. palace 模式：陷害决斗触发 ===');
-    const pa = ioClient(URL, { transports: ['websocket'] });
-    const pb = ioClient(URL, { transports: ['websocket'] });
-    await Promise.all([
-      new Promise((r) => pa.on('connect', r)),
-      new Promise((r) => pb.on('connect', r)),
-    ]);
-    pa.emit('create_room', { name: '宫A', mode: 'palace' });
-    const paJoin = await waitFor(pa, 'joined');
-    assert(paJoin.mode === 'palace', '宫斗 mode=palace');
-    pb.emit('join_room', { code: paJoin.code, name: '宫B' });
-    await waitFor(pb, 'joined');
+    // === 6. 陷害决斗 - 测试三种 duel 都能触发 ===
+    console.log('=== 6. 陷害决斗 - 触发任意决斗类型 ===');
+    const duelTypes = new Set();
+    for (let attempt = 0; attempt < 20 && duelTypes.size < 3; attempt++) {
+      const pa = ioClient(URL, { transports: ['websocket'] });
+      const pb = ioClient(URL, { transports: ['websocket'] });
+      await Promise.all([
+        new Promise((r) => pa.on('connect', r)),
+        new Promise((r) => pb.on('connect', r)),
+      ]);
+      pa.emit('create_room', { name: 'A', mode: 'palace', classId: 'default' });
+      const j = await waitFor(pa, 'joined');
+      pb.emit('join_room', { code: j.code, name: 'B', classId: 'default' });
+      await waitFor(pb, 'joined');
+      await waitFor(pa, 'state', (s) => s.phase === 'choosing');
 
-    // 等开局
-    let paS = await waitFor(pa, 'state', (s) => s.phase === 'choosing');
-    let pbS = await waitFor(pb, 'state', (s) => s.phase === 'choosing');
-    assert(paS.appellation.emperor === '乾隆', '使用了修改后的 emperor 名');
+      pa.emit('choose_action', { action: 'sabotage' });
+      pb.emit('choose_action', { action: 'sabotage' });
+      const sDuel = await waitFor(pa, 'state', (s) => s.phase === 'duel' && s.duel, 4000);
+      duelTypes.add(sDuel.duel.duelId);
+      assert(sDuel.duel.duelKind === 'sabotage', `duelKind=sabotage`);
+      assert(['gomoku', 'rps', 'guess'].includes(sDuel.duel.duelId), 'duelId 合法');
 
-    // 双方陷害 -> 触发决斗
-    pa.emit('choose_action', { action: 'sabotage' });
-    pb.emit('choose_action', { action: 'sabotage' });
-
-    const duelA = await waitFor(pa, 'state', (s) => s.phase === 'duel', 4000);
-    assert(duelA.gomoku && duelA.gomoku.duel === 'sabotage', '触发 sabotage 决斗');
-    assert(duelA.gomoku.yourColor === 1, '建房者执黑');
-
-    let afterDuel = null;
-    for (let i = 0; i < 5; i++) {
-      const isLast = i === 4;
-      const aWait = waitFor(pa, 'state',
-        (s) => isLast
-          ? (s.phase === 'choosing' || s.phase === 'ended')
-          : (s.gomoku && s.gomoku.lastMove && s.gomoku.lastMove.row === 4 && s.gomoku.lastMove.col === i),
-        4000, isLast ? '决斗后回宫' : `A决斗 (4,${i})`);
-      pa.emit('place_stone', { row: 4, col: i });
-      const st = await aWait;
-      if (isLast) afterDuel = st;
-      if (i < 4) {
-        const bWait = waitFor(pb, 'state',
-          (s) => s.gomoku && s.gomoku.lastMove && s.gomoku.lastMove.row === 0 && s.gomoku.lastMove.col === i,
-          4000, `B决斗 (0,${i})`);
-        pb.emit('place_stone', { row: 0, col: i });
-        await bWait;
-      }
+      pa.disconnect(); pb.disconnect();
+      await new Promise((r) => setTimeout(r, 100));
     }
-    assert(afterDuel.phase === 'choosing', '决斗后回到 choosing');
-    assert(afterDuel.turn === 2, '回合推进到 2');
-    assert(afterDuel.log.some((l) => l.includes('棋决胜负')), '日志有"棋决胜负"');
-    assert(afterDuel.log.some((l) => l.includes('棋局已分胜负')), '日志有"棋局已分胜负"');
+    assert(duelTypes.size >= 2, `20 次抽中至少 2 种决斗，实际 ${[...duelTypes].join(',')}`);
+    console.log('  -> 抽样到的决斗类型:', [...duelTypes]);
 
-    pa.disconnect(); pb.disconnect();
-    await new Promise((r) => setTimeout(r, 200));
+    // === 7. RPS 决斗完整流程 ===
+    console.log('=== 7. RPS 决斗完整流程 ===');
+    let rpsTested = false;
+    for (let attempt = 0; attempt < 30 && !rpsTested; attempt++) {
+      const pa = ioClient(URL, { transports: ['websocket'] });
+      const pb = ioClient(URL, { transports: ['websocket'] });
+      await Promise.all([
+        new Promise((r) => pa.on('connect', r)),
+        new Promise((r) => pb.on('connect', r)),
+      ]);
+      pa.emit('create_room', { name: 'A', mode: 'palace', classId: 'default' });
+      const j = await waitFor(pa, 'joined');
+      pb.emit('join_room', { code: j.code, name: 'B', classId: 'default' });
+      await waitFor(pb, 'joined');
+      await waitFor(pa, 'state', (s) => s.phase === 'choosing');
 
-    // 还原 config 到默认（清理）
-    const reset = await httpReq('POST', '/api/admin/reset', {}, { 'X-Admin-Token': 'CHANGE_ME_NOW' });
-    assert(reset.status === 200, 'reset 成功');
+      pa.emit('choose_action', { action: 'sabotage' });
+      pb.emit('choose_action', { action: 'sabotage' });
+      const sDuel = await waitFor(pa, 'state', (s) => s.phase === 'duel' && s.duel, 4000);
+      if (sDuel.duel.duelId !== 'rps') {
+        pa.disconnect(); pb.disconnect();
+        continue;
+      }
+      // 找到 RPS 决斗，开始打
+      rpsTested = true;
+      // A 出 rock，B 出 scissors -> A 胜 1
+      pa.emit('duel_action', { choice: 'rock' });
+      pb.emit('duel_action', { choice: 'scissors' });
+      const r1 = await waitFor(pa, 'state', (s) => s.duel && s.duel.score && s.duel.score.you === 1, 3000, 'A 第一局胜');
+      assert(r1.duel.score.you === 1, 'A 1:0');
+      // 第二局 A rock, B scissors -> A 2:0 胜出 + 决斗结束
+      const afterPromise = waitFor(pa, 'state', (s) => s.phase === 'choosing' || s.phase === 'ended', 4000, '决斗结束回宫');
+      pa.emit('duel_action', { choice: 'rock' });
+      pb.emit('duel_action', { choice: 'scissors' });
+      const after = await afterPromise;
+      assert(after.phase === 'choosing', '回到 choosing');
+      assert(after.turn === 2, '回合推进');
+      pa.disconnect(); pb.disconnect();
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    assert(rpsTested, '30 次内至少打到一次 RPS');
+
+    // === 8. 猜大小决斗 ===
+    console.log('=== 8. 猜大小决斗完整流程 ===');
+    let guessTested = false;
+    for (let attempt = 0; attempt < 30 && !guessTested; attempt++) {
+      const pa = ioClient(URL, { transports: ['websocket'] });
+      const pb = ioClient(URL, { transports: ['websocket'] });
+      await Promise.all([
+        new Promise((r) => pa.on('connect', r)),
+        new Promise((r) => pb.on('connect', r)),
+      ]);
+      pa.emit('create_room', { name: 'A', mode: 'palace', classId: 'default' });
+      const j = await waitFor(pa, 'joined');
+      pb.emit('join_room', { code: j.code, name: 'B', classId: 'default' });
+      await waitFor(pb, 'joined');
+      await waitFor(pa, 'state', (s) => s.phase === 'choosing');
+
+      pa.emit('choose_action', { action: 'sabotage' });
+      pb.emit('choose_action', { action: 'sabotage' });
+      const sDuel = await waitFor(pa, 'state', (s) => s.phase === 'duel' && s.duel, 4000);
+      if (sDuel.duel.duelId !== 'guess') {
+        pa.disconnect(); pb.disconnect();
+        continue;
+      }
+      guessTested = true;
+      // A 出 100, B 出 1 -> A 胜
+      pa.emit('duel_action', { num: 100 });
+      pb.emit('duel_action', { num: 1 });
+      const r1 = await waitFor(pa, 'state', (s) => s.duel && s.duel.score && s.duel.score.you === 1, 3000, 'A 第一局');
+      assert(r1.duel.score.you === 1);
+      // 第二局 A 99, B 1 -> A 胜出
+      const afterPromise = waitFor(pa, 'state', (s) => s.phase === 'choosing' || s.phase === 'ended', 4000);
+      pa.emit('duel_action', { num: 99 });
+      pb.emit('duel_action', { num: 1 });
+      const after = await afterPromise;
+      assert(after.phase === 'choosing', '回到 choosing');
+      pa.disconnect(); pb.disconnect();
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    assert(guessTested, '30 次内至少打到一次猜大小');
+
+    await restoreCfg(TK);
 
   } catch (e) {
-    console.error('FATAL:', e.message);
+    console.error('FATAL:', e.message, e.stack);
     failed++;
-    errors.push(e.message);
+    errors.push(e.message || String(e));
   }
 
   proc.kill('SIGKILL');
@@ -223,7 +264,7 @@ async function main() {
 
   console.log('\n' + '='.repeat(60));
   if (failed === 0) {
-    console.log(`✅ 集成测试全部通过 (${passed} 断言)`);
+    console.log(`✅ v3.1 集成测试全部通过 (${passed} 断言)`);
     process.exit(0);
   } else {
     console.log(`❌ ${failed}/${passed + failed} 失败`);

@@ -1,11 +1,10 @@
 /**
- * 后宫风云 v3.0 - 网络层
+ * 后宫风云 v3.1 - 网络层
  *
- * 功能：
- *   - 静态文件
- *   - Socket.IO 房间管理（palace 或 gomoku 模式）
- *   - 五子棋逻辑（独立模式 + 陷害决斗）
- *   - admin REST API（GET/POST /api/admin/config）
+ * v3.1 新增：
+ *   - 决斗池：陷害判定从 5 子棋改为随机抽 [gomoku, rps, guess] 之一
+ *   - 角色职业：建房时选 classId（默认 default）
+ *   - 道具卡牌：每月初有几率掉落，可主动出牌
  */
 
 const express = require('express');
@@ -13,7 +12,7 @@ const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
 const game = require('./game');
-const gomoku = require('./gomoku');
+const duels = require('./duels');
 const config = require('./config');
 
 config.load();
@@ -28,7 +27,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const PORT = process.env.PORT || 3000;
 
 // ============================================================
-// admin API（密码保护）
+// admin API
 // ============================================================
 
 function checkToken(req, res, next) {
@@ -79,8 +78,34 @@ app.get('/api/admin/stats', checkToken, (req, res) => {
   });
 });
 
+// 公开元数据：职业列表 + 决斗池信息（供前端展示）
+app.get('/api/meta', (req, res) => {
+  const cfg = config.get();
+  const enabledClasses = (cfg.classes && cfg.classes.enabled) || ['default'];
+  const classList = enabledClasses
+    .filter((id) => cfg.classes && cfg.classes[id])
+    .map((id) => {
+      const c = cfg.classes[id];
+      return { id: c.id, name: c.name, icon: c.icon, description: c.description };
+    });
+  const enabledDuels = (cfg.duels && cfg.duels.enabled) || ['gomoku'];
+  const duelList = enabledDuels.map((id) => {
+    const d = duels.getById(id);
+    return d ? { id: d.id, name: d.name, icon: d.icon, description: d.description } : null;
+  }).filter(Boolean);
+  const enabledCards = (cfg.cards && cfg.cards.enabled) ? (cfg.cards.list || []) : [];
+  res.json({
+    ok: true,
+    appellation: cfg.appellation,
+    classes: classList,
+    duels: duelList,
+    cards: enabledCards.map((c) => ({ id: c.id, name: c.name, icon: c.icon, description: c.description, type: c.type })),
+    palace: { maxTurns: cfg.palace.maxTurns },
+  });
+});
+
 // ============================================================
-// 房间管理
+// 房间
 // ============================================================
 
 const rooms = new Map();
@@ -98,14 +123,12 @@ function makeRoom(code, mode) {
     mode: mode === 'gomoku' ? 'gomoku' : 'palace',
     players: [],
     turn: 1,
-    phase: 'waiting',  // waiting -> choosing -> duel -> ended
+    phase: 'waiting',
     log: [],
-    config: config.get(), // 房间创建时快照配置
+    config: config.get(),
     createdAt: Date.now(),
-    // gomoku 子状态（独立模式 OR 陷害决斗时使用）
-    gomoku: null,
-    // 暂存的本月动作（陷害决斗等待时使用）
-    pendingActions: null,
+    duel: null,           // { module, state, type }
+    pendingActions: null, // 决斗等待时暂存动作
   };
 }
 
@@ -116,9 +139,24 @@ function findRoomBySocket(socketId) {
   return null;
 }
 
-// 切换 game 模块的配置上下文（每次操作前调用）
 function useRoomConfig(room) {
   game.setConfig(room.config);
+}
+
+// ============================================================
+// 视图
+// ============================================================
+
+function buildDuelView(room, forSocket) {
+  if (!room.duel) return null;
+  const idx = room.players.findIndex((p) => p.socketId === forSocket);
+  if (idx < 0) return null;
+  const view = room.duel.module.buildView(room.duel.state, idx);
+  view.duelId = room.duel.module.id;
+  view.duelName = room.duel.module.name;
+  view.duelIcon = room.duel.module.icon;
+  view.duelKind = room.duel.kind;       // 'sabotage' | 'standalone'
+  return view;
 }
 
 function buildPalaceView(room, forSocket) {
@@ -133,32 +171,16 @@ function buildPalaceView(room, forSocket) {
     log: room.log.slice(-200),
     logTotal: room.log.length,
     appellation: room.config.appellation,
-    you: me ? game.publicView(me.state) : null,
-    opponent: op ? game.publicView(op.state) : null,
+    you: me ? game.publicView(me.state, { self: true }) : null,
+    opponent: op ? game.publicView(op.state, { self: false }) : null,
     youReady: !!(me && me.action),
     opponentReady: !!(op && op.action),
     youHaveOpponent: room.players.length === 2,
-    gomoku: room.gomoku ? buildGomokuSubView(room, forSocket) : null,
+    duel: buildDuelView(room, forSocket),
   };
 }
 
-function buildGomokuSubView(room, forSocket) {
-  const me = room.players.find((p) => p.socketId === forSocket);
-  const myColor = me && me.color;
-  return {
-    board: room.gomoku.board,
-    current: room.gomoku.current,
-    yourColor: myColor,
-    yourTurn: room.gomoku.current === myColor,
-    winner: room.gomoku.winner,
-    duel: room.gomoku.duel || null, // 'sabotage' | 'standalone'
-    lastMove: room.gomoku.lastMove || null,
-    moveCount: room.gomoku.moveCount,
-    deadline: room.gomoku.deadline,
-  };
-}
-
-function buildGomokuView(room, forSocket) {
+function buildGomokuStandaloneView(room, forSocket) {
   const me = room.players.find((p) => p.socketId === forSocket);
   const op = room.players.find((p) => p.socketId !== forSocket);
   return {
@@ -167,44 +189,38 @@ function buildGomokuView(room, forSocket) {
     phase: room.phase,
     log: room.log.slice(-50),
     logTotal: room.log.length,
-    you: me ? { name: me.state.name, color: me.color, score: me.score || 0 } : null,
-    opponent: op ? { name: op.state.name, color: op.color, score: op.score || 0 } : null,
+    you: me ? { name: me.state.name, score: me.score || 0 } : null,
+    opponent: op ? { name: op.state.name, score: op.score || 0 } : null,
     youHaveOpponent: room.players.length === 2,
-    gomoku: room.gomoku ? buildGomokuSubView(room, forSocket) : null,
+    duel: buildDuelView(room, forSocket),
   };
 }
 
 function broadcastRoom(room) {
   for (const p of room.players) {
     const view = room.mode === 'gomoku'
-      ? buildGomokuView(room, p.socketId)
+      ? buildGomokuStandaloneView(room, p.socketId)
       : buildPalaceView(room, p.socketId);
     io.to(p.socketId).emit('state', view);
   }
 }
 
 // ============================================================
-// 五子棋小局生命周期
+// 决斗生命周期（支持任意 duel 模块）
 // ============================================================
 
-function startGomokuMatch(room, opts) {
-  const sz = room.config.gomoku.boardSize;
-  const board = gomoku.newBoard(sz);
-  // 谁是黑（先手）
-  const blackIdx = (opts && opts.blackIdx != null) ? opts.blackIdx : 0;
-  room.players[blackIdx].color = 1;
-  room.players[1 - blackIdx].color = 2;
-  room.gomoku = {
-    board,
-    current: 1, // 黑先
-    winner: null,
-    duel: opts.duel || 'standalone',
-    moveCount: 0,
-    lastMove: null,
-    deadline: Date.now() + (room.config.gomoku.moveTimeoutSec * 1000),
-  };
+function startDuel(room, opts) {
+  opts = opts || {};
+  let mod;
+  if (opts.module) {
+    mod = opts.module;
+  } else {
+    mod = duels.pickRandom(room.config);
+  }
+  const state = mod.init({ config: room.config, options: { attackerIdx: opts.attackerIdx != null ? opts.attackerIdx : 0 } });
+  room.duel = { module: mod, state, kind: opts.kind || 'standalone' };
   room.phase = 'duel';
-  scheduleTimeout(room);
+  scheduleDuelTimeout(room);
 }
 
 function clearTimeoutIfAny(room) {
@@ -214,106 +230,127 @@ function clearTimeoutIfAny(room) {
   }
 }
 
-function scheduleTimeout(room) {
+function scheduleDuelTimeout(room) {
   clearTimeoutIfAny(room);
-  const ms = room.config.gomoku.moveTimeoutSec * 1000;
+  if (!room.duel) return;
+  const deadline = room.duel.module.getDeadline(room.duel.state);
+  if (!deadline) return;
+  const ms = Math.max(500, deadline - Date.now() + 500);
   room._timer = setTimeout(() => {
-    if (!room.gomoku || room.gomoku.winner) return;
-    // 当前色超时 -> 对方判负
-    const loser = room.gomoku.current;
-    const winner = loser === 1 ? 2 : 1;
-    room.gomoku.winner = winner;
-    room.log.push(`⏱️ ${room.players.find(p => p.color === loser).state.name} 思虑过久，判负`);
-    finalizeGomoku(room);
-  }, ms + 500);
+    if (!room.duel || room.duel.module.isOver(room.duel.state)) return;
+    const r = room.duel.module.onTimeout(room.duel.state);
+    if (r && r.events) for (const e of r.events) room.log.push('⏱️ ' + e);
+    if (room.duel.module.isOver(room.duel.state)) {
+      finalizeDuel(room);
+    } else {
+      // 同时回合（rps/guess）超时后可能进入下一回合
+      scheduleDuelTimeout(room);
+    }
+    broadcastRoom(room);
+  }, ms);
 }
 
-function finalizeGomoku(room) {
+function finalizeDuel(room) {
   clearTimeoutIfAny(room);
-  if (room.mode === 'gomoku') {
-    // 独立模式：胜负即结束局，可重开
-    const winnerColor = room.gomoku.winner;
-    if (winnerColor === 'draw') {
-      room.log.push('🤝 棋逢对手，和局');
-    } else if (winnerColor) {
-      const w = room.players.find((p) => p.color === winnerColor);
+  if (!room.duel) return;
+  const winnerIdx = room.duel.module.getWinner(room.duel.state); // 0|1|null|-1(draw)
+  const kind = room.duel.kind;
+
+  if (kind === 'standalone') {
+    if (winnerIdx === 0 || winnerIdx === 1) {
+      const w = room.players[winnerIdx];
       w.score = (w.score || 0) + 1;
-      room.log.push(`🏆 ${w.state.name} 获胜（${winnerColor === 1 ? '执黑' : '执白'}）`);
+      room.log.push(`🏆 ${w.state.name} 获胜（${room.duel.module.name}）`);
+    } else {
+      room.log.push('🤝 不分胜负');
     }
     room.phase = 'ended';
+    room.duel = null;
+    return;
+  }
+
+  // sabotage: 翻译胜负为 forceSabotage
+  const pa = room.pendingActions;
+  room.duel = null;
+  if (!pa) {
+    room.phase = 'choosing';
+    return;
+  }
+  const [a, b] = room.players;
+  const opts = {};
+  if (pa.actA === 'sabotage') {
+    opts.forceSabotageA = (winnerIdx === 0) ? 'hit' : 'miss';
+  }
+  if (pa.actB === 'sabotage') {
+    opts.forceSabotageB = (winnerIdx === 1) ? 'hit' : 'miss';
+  }
+
+  room.log.push(`⚔️ 决斗已分胜负，回到宫斗`);
+  useRoomConfig(room);
+  const { log: tlog } = game.resolveTurn(a.state, b.state, pa.actA, pa.actB, room.turn, undefined, opts);
+  room.log.push(...tlog);
+
+  a.action = null; b.action = null;
+  room.pendingActions = null;
+
+  const endResult = game.checkEnd(a.state, b.state, room.turn);
+  if (endResult.ended) {
+    finishPalaceGame(room, endResult);
   } else {
-    // 陷害决斗：把胜负翻译成 sabotage 结果，然后调用 resolveTurn
-    const pa = room.pendingActions;
-    if (!pa) {
-      room.phase = 'choosing';
-      return;
-    }
-    const [a, b] = room.players;
-    const winnerColor = room.gomoku.winner;
-    let winnerIdx = -1;
-    if (winnerColor === 1 || winnerColor === 2) {
-      winnerIdx = room.players.findIndex((p) => p.color === winnerColor);
-    } // draw -> 双方都判 miss
-
-    let opts = {};
-    if (pa.actA === 'sabotage') {
-      opts.forceSabotageA = (winnerIdx === 0) ? 'hit' : 'miss';
-    }
-    if (pa.actB === 'sabotage') {
-      opts.forceSabotageB = (winnerIdx === 1) ? 'hit' : 'miss';
-    }
-
-    room.log.push(`⚔️ 棋局已分胜负，回到宫斗`);
-    useRoomConfig(room);
-    const { log } = game.resolveTurn(a.state, b.state, pa.actA, pa.actB, room.turn, undefined, opts);
-    room.log.push(...log);
-
-    a.action = null;
-    b.action = null;
-    room.pendingActions = null;
-    room.gomoku = null;
-
-    const endResult = game.checkEnd(a.state, b.state, room.turn);
-    if (endResult.ended) {
-      room.phase = 'ended';
-      room.log.push(`🏁 ${endResult.reason}`);
-      if (endResult.winner === 'A') {
-        room.log.push(`🌟 ${a.state.name} 胜出！综合分 ${game.calcScore(a.state)}`);
-      } else if (endResult.winner === 'B') {
-        room.log.push(`🌟 ${b.state.name} 胜出！综合分 ${game.calcScore(b.state)}`);
-      }
-    } else {
-      room.turn += 1;
-      room.phase = 'choosing';
-    }
+    advanceToNextTurn(room);
   }
 }
 
+function finishPalaceGame(room, endResult) {
+  room.phase = 'ended';
+  room.log.push(`🏁 ${endResult.reason}`);
+  const [a, b] = room.players;
+  if (endResult.winner === 'A') {
+    room.log.push(`🌟 ${a.state.name} 胜出！综合分 ${game.calcScore(a.state)}`);
+  } else if (endResult.winner === 'B') {
+    room.log.push(`🌟 ${b.state.name} 胜出！综合分 ${game.calcScore(b.state)}`);
+  }
+}
+
+// 推进到下一月：抽卡 + 状态更新
+function advanceToNextTurn(room) {
+  room.turn += 1;
+  room.phase = 'choosing';
+  useRoomConfig(room);
+  const subLog = [];
+  for (const p of room.players) {
+    game.onTurnStart(p.state, subLog, undefined, room.turn === 1);
+  }
+  if (subLog.length) room.log.push(...subLog);
+}
+
 // ============================================================
-// 决定该回合是否触发陷害决斗
+// 触发陷害决斗的判定
 // ============================================================
 
 function shouldTriggerSabotageDuel(room) {
-  if (!room.config.gomoku.sabotageDuel) return false;
+  const cfg = room.config;
+  if (!cfg.gomoku || !cfg.gomoku.sabotageDuel) return false;
   const [a, b] = room.players;
   const aSab = a.action === 'sabotage';
   const bSab = b.action === 'sabotage';
   if (!aSab && !bSab) return false;
-  // 自保挡掉陷害，不触发决斗
   if (aSab && b.action === 'defend') return false;
   if (bSab && a.action === 'defend') return false;
-  // 体力不足/被禁足时陷害也无效
   if (aSab && (a.state.imprisoned > 0 || a.state.energy < 20)) return false;
   if (bSab && (b.state.imprisoned > 0 || b.state.energy < 20)) return false;
+  // 御赐宝剑：必中跳过决斗
+  if (aSab && a.state.shields && a.state.shields.guaranteed) return false;
+  if (bSab && b.state.shields && b.state.shields.guaranteed) return false;
   return true;
 }
 
 // ============================================================
-// Socket.IO 事件
+// Socket.IO
 // ============================================================
 
 io.on('connection', (socket) => {
-  socket.on('create_room', ({ name, mode } = {}) => {
+  socket.on('create_room', ({ name, mode, classId } = {}) => {
     let code;
     do { code = genRoomCode(); } while (rooms.has(code));
     const room = makeRoom(code, mode);
@@ -325,9 +362,11 @@ io.on('connection', (socket) => {
         score: 0,
       });
     } else {
+      const validClassIds = (room.config.classes && room.config.classes.enabled) || ['default'];
+      const cid = validClassIds.includes(classId) ? classId : 'default';
       room.players.push({
         socketId: socket.id,
-        state: game.newPlayerState((name || '').slice(0, 8)),
+        state: game.newPlayerState((name || '').slice(0, 8), cid),
         action: null,
       });
     }
@@ -337,7 +376,7 @@ io.on('connection', (socket) => {
     broadcastRoom(room);
   });
 
-  socket.on('join_room', ({ code, name } = {}) => {
+  socket.on('join_room', ({ code, name, classId } = {}) => {
     code = (code || '').toUpperCase().trim();
     const room = rooms.get(code);
     if (!room) { socket.emit('error_msg', '房间不存在'); return; }
@@ -351,9 +390,11 @@ io.on('connection', (socket) => {
         score: 0,
       });
     } else {
+      const validClassIds = (room.config.classes && room.config.classes.enabled) || ['default'];
+      const cid = validClassIds.includes(classId) ? classId : 'default';
       room.players.push({
         socketId: socket.id,
-        state: game.newPlayerState((name || '').slice(0, 8)),
+        state: game.newPlayerState((name || '').slice(0, 8), cid),
         action: null,
       });
     }
@@ -362,10 +403,14 @@ io.on('connection', (socket) => {
     if (room.players.length === 2 && room.phase === 'waiting') {
       if (room.mode === 'gomoku') {
         room.log.push('🎬 棋逢对手，请先手落子');
-        startGomokuMatch(room, { duel: 'standalone', blackIdx: 0 });
+        startDuel(room, { module: duels.getById('gomoku'), kind: 'standalone', attackerIdx: 0 });
       } else {
         room.phase = 'choosing';
         room.log.push('🎬 二位佳人入宫，宫斗开局！');
+        // 第一月开始时双方都执行 onTurnStart
+        const subLog = [];
+        for (const p of room.players) game.onTurnStart(p.state, subLog, undefined, true);
+        if (subLog.length) room.log.push(...subLog);
       }
     }
     broadcastRoom(room);
@@ -388,11 +433,14 @@ io.on('connection', (socket) => {
       if (shouldTriggerSabotageDuel(room)) {
         const [a, b] = room.players;
         room.pendingActions = { actA: a.action, actB: b.action };
-        // 攻方为黑（如果双方都陷害，建房者为黑）
-        let blackIdx = 0;
-        if (a.action !== 'sabotage' && b.action === 'sabotage') blackIdx = 1;
-        room.log.push(`⚔️ ${a.action === 'sabotage' ? a.state.name : ''}${a.action === 'sabotage' && b.action === 'sabotage' ? ' 与 ' + b.state.name : (b.action === 'sabotage' ? b.state.name : '')} 暗中布局，棋决胜负！`);
-        startGomokuMatch(room, { duel: 'sabotage', blackIdx });
+        let attackerIdx = 0;
+        if (a.action !== 'sabotage' && b.action === 'sabotage') attackerIdx = 1;
+        const mod = duels.pickRandom(room.config);
+        const intro = a.action === 'sabotage' && b.action === 'sabotage'
+          ? `${a.state.name} 与 ${b.state.name} 双方暗中布局`
+          : `${room.players[attackerIdx].state.name} 暗中布局`;
+        room.log.push(`⚔️ ${intro}，「${mod.name}」决胜负！`);
+        startDuel(room, { module: mod, kind: 'sabotage', attackerIdx });
       } else {
         const [a, b] = room.players;
         const { log } = game.resolveTurn(a.state, b.state, a.action, b.action, room.turn);
@@ -401,73 +449,106 @@ io.on('connection', (socket) => {
         b.action = null;
         const endResult = game.checkEnd(a.state, b.state, room.turn);
         if (endResult.ended) {
-          room.phase = 'ended';
-          room.log.push(`🏁 ${endResult.reason}`);
-          if (endResult.winner === 'A') {
-            room.log.push(`🌟 ${a.state.name} 胜出！综合分 ${game.calcScore(a.state)}`);
-          } else if (endResult.winner === 'B') {
-            room.log.push(`🌟 ${b.state.name} 胜出！综合分 ${game.calcScore(b.state)}`);
-          }
+          finishPalaceGame(room, endResult);
         } else {
-          room.turn += 1;
+          advanceToNextTurn(room);
         }
       }
     }
     broadcastRoom(room);
   });
 
-  socket.on('place_stone', ({ row, col } = {}) => {
+  socket.on('use_card', ({ cardId } = {}) => {
     const room = findRoomBySocket(socket.id);
-    if (!room || !room.gomoku || room.gomoku.winner || room.phase !== 'duel') return;
+    if (!room || room.mode !== 'palace' || room.phase !== 'choosing') return;
     const me = room.players.find((p) => p.socketId === socket.id);
-    if (!me) return;
-    if (me.color !== room.gomoku.current) {
+    const op = room.players.find((p) => p.socketId !== socket.id);
+    if (!me || !op) return;
+    useRoomConfig(room);
+    const log = [];
+    const r = game.useCard(me.state, op.state, cardId, log);
+    if (!r.ok) {
+      socket.emit('error_msg', r.reason || '使用失败');
+      return;
+    }
+    if (log.length) room.log.push(...log);
+    broadcastRoom(room);
+  });
+
+  // 通用决斗动作（gomoku/rps/guess 都用此事件）
+  socket.on('duel_action', (payload = {}) => {
+    const room = findRoomBySocket(socket.id);
+    if (!room || !room.duel || room.phase !== 'duel') return;
+    if (room.duel.module.isOver(room.duel.state)) return;
+    const idx = room.players.findIndex((p) => p.socketId === socket.id);
+    if (idx < 0) return;
+    const mod = room.duel.module;
+    if (!mod.canAct(room.duel.state, idx)) {
       socket.emit('error_msg', '尚未轮到');
       return;
     }
-    const r = Number(row), c = Number(col);
-    const result = gomoku.applyMove(room.gomoku.board, r, c, me.color);
-    if (!result.ok) {
-      socket.emit('error_msg', result.reason || '落子无效');
+    const v = mod.validateAction(room.duel.state, idx, payload);
+    if (!v.ok) {
+      socket.emit('error_msg', v.reason || '动作无效');
       return;
     }
-    room.gomoku.lastMove = { row: r, col: c, color: me.color };
-    room.gomoku.moveCount++;
-    if (result.win) {
-      room.gomoku.winner = me.color;
-    } else if (result.draw) {
-      room.gomoku.winner = 'draw';
-    } else {
-      room.gomoku.current = me.color === 1 ? 2 : 1;
-      room.gomoku.deadline = Date.now() + (room.config.gomoku.moveTimeoutSec * 1000);
-      scheduleTimeout(room);
+    const r = mod.applyAction(room.duel.state, idx, payload);
+    if (r && r.events && r.events.length) {
+      for (const e of r.events) room.log.push('⚔️ ' + e);
     }
-    if (room.gomoku.winner) {
-      finalizeGomoku(room);
+    if (mod.isOver(room.duel.state)) {
+      finalizeDuel(room);
+    } else {
+      scheduleDuelTimeout(room);
     }
     broadcastRoom(room);
   });
 
-  socket.on('rematch', () => {
+  // 兼容旧客户端的 place_stone（v3.0 用）
+  socket.on('place_stone', ({ row, col } = {}) => {
+    const room = findRoomBySocket(socket.id);
+    if (!room || !room.duel || room.duel.module.id !== 'gomoku') return;
+    const idx = room.players.findIndex((p) => p.socketId === socket.id);
+    if (idx < 0) return;
+    const mod = room.duel.module;
+    if (!mod.canAct(room.duel.state, idx)) return;
+    const v = mod.validateAction(room.duel.state, idx, { row, col });
+    if (!v.ok) {
+      socket.emit('error_msg', v.reason || '落子无效');
+      return;
+    }
+    mod.applyAction(room.duel.state, idx, { row, col });
+    if (mod.isOver(room.duel.state)) finalizeDuel(room);
+    else scheduleDuelTimeout(room);
+    broadcastRoom(room);
+  });
+
+  socket.on('rematch', ({ classId } = {}) => {
     const room = findRoomBySocket(socket.id);
     if (!room || room.phase !== 'ended') return;
     clearTimeoutIfAny(room);
     useRoomConfig(room);
     if (room.mode === 'gomoku') {
       room.log = [`🔄 再来一局`];
-      room.gomoku = null;
-      // 上一局赢家执白先手？保持简单：黑白互换
-      const blackIdx = room.players[0].color === 1 ? 1 : 0;
-      startGomokuMatch(room, { duel: 'standalone', blackIdx });
+      room.duel = null;
+      const attackerIdx = room.players[0].score >= (room.players[1].score || 0) ? 1 : 0;
+      startDuel(room, { module: duels.getById('gomoku'), kind: 'standalone', attackerIdx });
     } else {
+      const validClassIds = (room.config.classes && room.config.classes.enabled) || ['default'];
       room.turn = 1;
       room.phase = room.players.length === 2 ? 'choosing' : 'waiting';
       room.log = ['🔄 重开一局，宫门再启'];
-      room.gomoku = null;
+      room.duel = null;
       room.pendingActions = null;
       for (const p of room.players) {
-        p.state = game.newPlayerState(p.state.name);
+        const cid = validClassIds.includes(p.state.classId) ? p.state.classId : 'default';
+        p.state = game.newPlayerState(p.state.name, cid);
         p.action = null;
+      }
+      if (room.phase === 'choosing') {
+        const subLog = [];
+        for (const p of room.players) game.onTurnStart(p.state, subLog, undefined, true);
+        if (subLog.length) room.log.push(...subLog);
       }
     }
     broadcastRoom(room);
@@ -498,5 +579,7 @@ setInterval(() => {
 }, 30 * 60 * 1000);
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[后宫风云 v3.0] 服务已启动 :${PORT}（共 ${config.get().palace.maxTurns} 月，五子棋 ${config.get().gomoku.boardSize}x${config.get().gomoku.boardSize}）`);
+  const cfg = config.get();
+  const enabledDuels = (cfg.duels && cfg.duels.enabled) || [];
+  console.log(`[后宫风云 v3.1] 服务已启动 :${PORT}（${cfg.palace.maxTurns} 月，决斗池: ${enabledDuels.join('/')}）`);
 });

@@ -69,9 +69,161 @@ function makeRng(seed) {
 function randInt(min, max, rng) { return Math.floor(rng() * (max - min + 1)) + min; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-function newPlayerState(name) {
-  return {
-    name: name || getConfig().appellation.concubineLabel || '佳人',
+// ============================================================
+// 卡牌系统
+// ============================================================
+
+function _cardsList() {
+  const cfg = getConfig();
+  return (cfg.cards && cfg.cards.list) || [];
+}
+
+function _cardsCfg() {
+  const cfg = getConfig();
+  return cfg.cards || { enabled: false, dropChance: 0, maxHand: 3 };
+}
+
+function getCardById(id) {
+  return _cardsList().find((c) => c.id === id) || null;
+}
+
+function drawCard(rng) {
+  rng = rng || Math.random;
+  const list = _cardsList();
+  if (!list.length) return null;
+  return list[Math.floor(rng() * list.length)];
+}
+
+function isCardLegal(self, cardId) {
+  const c = _cardsCfg();
+  if (!c.enabled) return { ok: false, reason: '卡牌系统已关闭' };
+  if (self.usedCardThisMonth) return { ok: false, reason: '本月已使用过道具' };
+  if (!self.cards || !self.cards.find((x) => x.id === cardId)) {
+    return { ok: false, reason: '你没有这张卡' };
+  }
+  if (self.imprisoned > 0) {
+    // 禁足时只允许被动盾或自身增益
+    const card = getCardById(cardId);
+    if (!card || (card.type !== 'passive' && card.effect !== 'self_buff' && card.effect !== 'self_shield_event')) {
+      return { ok: false, reason: '禁足期间不可使用主动卡' };
+    }
+  }
+  return { ok: true };
+}
+
+// 应用卡牌效果。返回 { ok, log: string }
+function useCard(self, other, cardId, log) {
+  const check = isCardLegal(self, cardId);
+  if (!check.ok) return { ok: false, reason: check.reason };
+  const card = getCardById(cardId);
+  // 移除手牌
+  const idx = self.cards.findIndex((c) => c.id === cardId);
+  self.cards.splice(idx, 1);
+  self.usedCardThisMonth = true;
+
+  switch (card.effect) {
+    case 'favor_damage': {
+      const dmg = card.value || 10;
+      const before = other.favor;
+      other.favor = Math.max(5, other.favor - dmg);
+      log.push(`🍵 ${self.name} 使了「${card.name}」，${other.name} 圣宠 -${before - other.favor}`);
+      break;
+    }
+    case 'self_buff': {
+      let parts = [];
+      if (card.favor)   { self.favor   = clamp(self.favor   + card.favor,   0, 100); parts.push(`+${card.favor} 圣宠`); }
+      if (card.power)   { self.power   = clamp(self.power   + card.power,   0, 100); parts.push(`+${card.power} 势力`); }
+      if (card.rep)     { self.reputation = clamp(self.reputation + card.rep, 0, 100); parts.push(`+${card.rep} 名望`); }
+      if (card.beauty)  { self.beauty  = clamp(self.beauty  + card.beauty,  0, 100); parts.push(`+${card.beauty} 美貌`); }
+      if (card.talent)  { self.talent  = clamp(self.talent  + card.talent,  0, 100); parts.push(`+${card.talent} 才艺`); }
+      if (card.energy)  { self.energy  = clamp(self.energy  + card.energy,  0, 100); parts.push(`+${card.energy} 体力`); }
+      log.push(`${card.icon} ${self.name} 用了「${card.name}」 (${parts.join('，')})`);
+      break;
+    }
+    case 'opp_debuff': {
+      self.nextMonthDebuff = self.nextMonthDebuff || {};
+      // 标记给对方下月生效
+      other._pendingDebuff = other._pendingDebuff || {};
+      if (card.energy_next) {
+        other._pendingDebuff.energyMinus = (other._pendingDebuff.energyMinus || 0) + card.energy_next;
+      }
+      log.push(`${card.icon} ${self.name} 暗下「${card.name}」，${other.name} 下月将受其害`);
+      break;
+    }
+    case 'shield_sabotage': {
+      self.shields = self.shields || {};
+      self.shields.sabotage = true;
+      log.push(`${card.icon} ${self.name} 持「${card.name}」，下次陷害必将被挡`);
+      break;
+    }
+    case 'self_shield_event': {
+      self.shields = self.shields || {};
+      self.shields.event = true;
+      log.push(`${card.icon} ${self.name} 焚「${card.name}」，本月免疫一次负面事件`);
+      break;
+    }
+    case 'reveal_last': {
+      const opLast = other.lastAction;
+      if (opLast) {
+        self.revealedAction = opLast;
+        log.push(`📜 ${self.name} 拆「${card.name}」，洞悉 ${other.name} 上月所为：${ACTION_LABEL[opLast]}`);
+      } else {
+        log.push(`📜 ${self.name} 拆「${card.name}」，但对方尚无上月动作`);
+      }
+      break;
+    }
+    default:
+      log.push(`${card.icon || '🎴'} ${self.name} 使用了「${card.name}」`);
+  }
+  return { ok: true, card };
+}
+
+function onTurnStart(state, log, rng, isFirstTurn) {
+  rng = rng || Math.random;
+  const c = _cardsCfg();
+  state.cards = state.cards || [];
+  state.shields = state.shields || {};
+  state.nextMonthDebuff = state.nextMonthDebuff || {};
+  state.usedCardThisMonth = false;
+  state.revealedAction = null;
+
+  // 应用上月被对方种下的 debuff
+  if (state._pendingDebuff) {
+    if (state._pendingDebuff.energyMinus) {
+      const before = state.energy;
+      state.energy = Math.max(0, state.energy - state._pendingDebuff.energyMinus);
+      log.push(`🦋 ${state.name} 蛊毒发作，体力 -${before - state.energy}`);
+    }
+    delete state._pendingDebuff;
+  }
+
+  // 抽卡（首月也可抽）
+  if (c.enabled && state.cards.length < (c.maxHand || 3)) {
+    const chance = (c.dropChance || 0) / 100;
+    if (rng() < chance) {
+      const card = drawCard(rng);
+      if (card) {
+        state.cards.push({ id: card.id, name: card.name, icon: card.icon });
+        log.push(`🎁 ${state.name} 偶得「${card.name}」`);
+      }
+    }
+  }
+}
+
+function onTurnEnd(state) {
+  state.shields = state.shields || {};
+  // event 盾是"本月有效"
+  if (state.shields.event) delete state.shields.event;
+  state.usedCardThisMonth = false;
+  state.revealedAction = null;
+}
+
+function newPlayerState(name, classId) {
+  const cfg = getConfig();
+  const cls = (cfg.classes && cfg.classes[classId]) || (cfg.classes && cfg.classes.default) || null;
+  const s = {
+    name: name || cfg.appellation.concubineLabel || '佳人',
+    classId: cls ? cls.id : 'default',
     rank: 0,
     favor: startFavor(),
     power: 10,
@@ -85,12 +237,26 @@ function newPlayerState(name) {
     pregnant: 0,
     imprisoned: 0,
     defending: false,
+    cards: [],            // 手牌：[{id, name, icon, type, ...}]
+    usedCardThisMonth: false,
+    shields: {},          // 被动卡占位：{ sabotage: true, event: true }
+    nextMonthDebuff: {},  // 下月生效的负面：{ energyMinus: 25 }
+    revealedAction: null, // 被密信揭示的"上月动作"，仅展示用
+    lastAction: null,     // 自己上一月做的动作
   };
+  if (cls) {
+    if (typeof cls.initFavorDelta === 'number') s.favor = clamp(s.favor + cls.initFavorDelta, 5, 100);
+    if (typeof cls.initPowerDelta === 'number') s.power = clamp(s.power + cls.initPowerDelta, 0, 100);
+    if (typeof cls.initRepDelta === 'number') s.reputation = clamp(s.reputation + cls.initRepDelta, 0, 100);
+  }
+  return s;
 }
 
-function publicView(p) {
-  return {
+function publicView(p, opts) {
+  opts = opts || {};
+  const view = {
     name: p.name,
+    classId: p.classId || 'default',
     rank: p.rank,
     rankName: RANK_NAMES[p.rank],
     favor: p.favor,
@@ -104,7 +270,17 @@ function publicView(p) {
     childrenNames: (p.childrenNames || []).slice(),
     pregnant: p.pregnant,
     imprisoned: p.imprisoned,
+    cardsCount: (p.cards || []).length,
+    shields: Object.assign({}, p.shields || {}),
   };
+  // 自己看到完整手牌；对手只能看到张数
+  if (opts.self) {
+    view.cards = (p.cards || []).slice();
+    view.usedCardThisMonth = !!p.usedCardThisMonth;
+    view.revealedAction = p.revealedAction || null;
+    view.nextMonthDebuff = Object.assign({}, p.nextMonthDebuff || {});
+  }
+  return view;
 }
 
 function calcScore(p) {
@@ -131,32 +307,38 @@ function isActionLegal(state, action) {
   }
 }
 
-// forceSabotage: 'hit' | 'miss' | undefined - 用于五子棋决斗强制陷害结果
+// forceSabotage: 'hit' | 'miss' | undefined - 用于决斗强制陷害结果
 function applyAction(self, other, action, log, rng, forceSabotage) {
   if (self.imprisoned > 0 && action !== 'defend') {
     log.push(`🚫 ${self.name} 被禁足，无法行动`);
     return;
   }
   const E = emperor();
+  const cfg = getConfig();
+  const cls = (cfg.classes && cfg.classes[self.classId]) || null;
 
   switch (action) {
     case 'serve': {
       self.energy = clamp(self.energy - 25, 0, 100);
-      const gain = randInt(8, 14, rng) + Math.floor((self.beauty + self.talent) / 30);
+      let gain = randInt(8, 14, rng) + Math.floor((self.beauty + self.talent) / 30);
+      if (cls && typeof cls.serveBonus === 'number') gain = Math.max(1, gain + cls.serveBonus);
+      if (cls && typeof cls.serveMultiplier === 'number') gain = Math.round(gain * cls.serveMultiplier);
       self.favor = clamp(self.favor + gain, 0, 100);
       log.push(`🌹 ${self.name} ${pick(FLAVOR.serve, rng)} (+${gain} 圣宠)`);
       break;
     }
     case 'train_talent': {
       self.energy = clamp(self.energy - 10, 0, 100);
-      const g = randInt(6, 11, rng);
+      let g = randInt(6, 11, rng);
+      if (cls && typeof cls.trainBonus === 'number') g += cls.trainBonus;
       self.talent = clamp(self.talent + g, 0, 100);
       log.push(`📚 ${self.name} ${pick(FLAVOR.train_talent, rng)} (+${g} 才艺)`);
       break;
     }
     case 'train_beauty': {
       self.energy = clamp(self.energy - 10, 0, 100);
-      const g = randInt(6, 11, rng);
+      let g = randInt(6, 11, rng);
+      if (cls && typeof cls.trainBonus === 'number') g += cls.trainBonus;
       self.beauty = clamp(self.beauty + g, 0, 100);
       log.push(`💄 ${self.name} ${pick(FLAVOR.train_beauty, rng)} (+${g} 美貌)`);
       break;
@@ -180,11 +362,19 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
       if (forceSabotage === 'hit') success = true;
       else if (forceSabotage === 'miss') success = false;
       else {
-        const atk = self.scheme + randInt(0, 25, rng);
+        const sabBonus = (cls && cls.sabotageAtkBonus) || 0;
+        const atk = self.scheme + sabBonus + randInt(0, 25, rng);
         const def = other.scheme + randInt(0, 20, rng);
         success = atk > def;
       }
       if (success) {
+        // 玉佩被动：自动免疫一次陷害
+        if (other.shields && other.shields.sabotage) {
+          delete other.shields.sabotage;
+          log.push(`💍 ${other.name} 玉佩生辉，${self.name} 阴谋无效`);
+          self.scheme = clamp(self.scheme - 2, 0, 100);
+          break;
+        }
         const dmg = randInt(10, 18, rng);
         const newFavor = Math.max(5, other.favor - dmg);
         const actualDmg = other.favor - newFavor;
@@ -204,7 +394,8 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
       break;
     }
     case 'defend': {
-      self.energy = clamp(self.energy + 20, 0, 100);
+      const bonus = (cls && cls.defendEnergyBonus) || 0;
+      self.energy = clamp(self.energy + 20 + bonus, 0, 100);
       self.scheme = clamp(self.scheme + 4, 0, 100);
       self.reputation = clamp(self.reputation + 3, 0, 100);
       log.push(`🛡️ ${self.name} ${pick(FLAVOR.defend, rng)}`);
@@ -212,7 +403,8 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
     }
     case 'try_child': {
       self.energy = clamp(self.energy - 30, 0, 100);
-      if (randInt(1, 100, rng) <= 55) {
+      const baseChance = 55 + ((cls && cls.tryChildBonus) || 0);
+      if (randInt(1, 100, rng) <= baseChance) {
         self.pregnant = 3;
         log.push(`✨ ${self.name} ${pick(FLAVOR.try_child_hit, rng)} (3 月待产)`);
       } else {
@@ -236,6 +428,16 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
       break;
     }
   }
+}
+
+// 检测某事件目标是否有"龟甲符"护盾，若有且事件为负面 -> 取消并消耗护盾
+function _shieldedFromNegative(target, log, kind) {
+  if (target.shields && target.shields.event) {
+    delete target.shields.event;
+    log.push(`🔮 ${target.name} 龟甲符闪光，化解 ${kind}`);
+    return true;
+  }
+  return false;
 }
 
 function maybeRandomEvent(a, b, log, rng) {
@@ -270,6 +472,7 @@ function maybeRandomEvent(a, b, log, rng) {
     },
     () => {
       const t = rng() < 0.5 ? a : b;
+      if (_shieldedFromNegative(t, log, '一次失仪')) return;
       const g = randInt(2, 5, rng);
       t.favor = Math.max(5, t.favor - g);
       log.push(`🍃 ${t.name} 御前失仪，${E}微愠 (-${g} 圣宠)`);
@@ -285,7 +488,7 @@ function maybeRandomEvent(a, b, log, rng) {
   pick(events, rng)();
 }
 
-// opts.forceSabotageA/B: 'hit'|'miss' - 五子棋决斗后由 server 传入
+// opts.forceSabotageA/B: 'hit'|'miss' - 决斗后由 server 传入
 function resolveTurn(stateA, stateB, actionA, actionB, turn, rng, opts) {
   rng = rng || Math.random;
   opts = opts || {};
@@ -295,6 +498,9 @@ function resolveTurn(stateA, stateB, actionA, actionB, turn, rng, opts) {
 
   stateA.defending = actionA === 'defend';
   stateB.defending = actionB === 'defend';
+  // 记录本月动作（密信下月可揭示）
+  stateA.lastAction = actionA;
+  stateB.lastAction = actionB;
 
   applyAction(stateA, stateB, actionA, log, rng, opts.forceSabotageA);
   applyAction(stateB, stateA, actionB, log, rng, opts.forceSabotageB);
@@ -347,7 +553,23 @@ function resolveTurn(stateA, stateB, actionA, actionB, turn, rng, opts) {
     s.energy = clamp(s.energy + energyRegen(), 0, 100);
   }
 
+  // 职业月效应（如妖姬每月 -1 名望）
+  const cfg = getConfig();
+  for (const s of [stateA, stateB]) {
+    const cls = (cfg.classes && cfg.classes[s.classId]) || null;
+    if (cls && typeof cls.monthlyRepLoss === 'number' && cls.monthlyRepLoss > 0) {
+      const loss = Math.min(s.reputation, cls.monthlyRepLoss);
+      if (loss > 0) {
+        s.reputation = Math.max(0, s.reputation - loss);
+        log.push(`💋 ${s.name}「${cls.name}」之名引人议论 (-${loss} 名望)`);
+      }
+    }
+  }
+
   maybeRandomEvent(stateA, stateB, log, rng);
+
+  // 月末清理：清除一次性盾（event 盾在 onTurnEnd 里处理）
+  for (const s of [stateA, stateB]) onTurnEnd(s);
 
   return { log };
 }
@@ -388,5 +610,8 @@ module.exports = {
   setConfig, getConfig,
   newPlayerState, publicView, calcScore,
   isActionLegal, applyAction, resolveTurn, checkEnd,
+  // 卡牌
+  drawCard, useCard, isCardLegal, getCardById,
+  onTurnStart, onTurnEnd,
   makeRng, clamp,
 };

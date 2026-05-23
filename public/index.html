@@ -4,295 +4,302 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#5b1a1a" />
-<title>后宫风云 · 双人宫斗</title>
+<title>后宫风云 v3.1 · 双人宫斗</title>
 <style>
   :root {
-    --bg: #f0e2c7;
-    --bg-deep: #e3d0a9;
-    --ink: #2b1810;
-    --ink-soft: #5b3a26;
-    --red: #8b1a1a;
-    --red-deep: #5b1a1a;
-    --gold: #b8862a;
-    --line: #8b6a3d;
+    --bg: #f0e2c7; --bg-deep: #e3d0a9;
+    --ink: #2b1810; --ink-soft: #5b3a26;
+    --red: #8b1a1a; --red-deep: #5b1a1a;
+    --gold: #b8862a; --line: #8b6a3d;
     --shadow: rgba(60, 30, 10, 0.25);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
-    margin: 0; padding: 0; height: 100%;
-    font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    margin: 0; padding: 0; min-height: 100%;
+    font-family: "Noto Serif SC","Songti SC","STSong","SimSun",serif;
     color: var(--ink);
-    background:
-      radial-gradient(circle at 20% 0%, rgba(139, 26, 26, 0.08), transparent 50%),
-      radial-gradient(circle at 80% 100%, rgba(184, 134, 42, 0.12), transparent 50%),
-      var(--bg);
+    background: radial-gradient(circle at 20% 0%, rgba(139,26,26,0.08), transparent 50%),
+                radial-gradient(circle at 80% 100%, rgba(184,134,42,0.12), transparent 50%),
+                var(--bg);
     background-attachment: fixed;
     overflow-x: hidden;
     -webkit-text-size-adjust: 100%;
   }
   body::before {
-    content: ""; position: fixed; inset: 0; pointer-events: none;
+    content:""; position:fixed; inset:0; pointer-events:none;
     background-image:
-      repeating-linear-gradient(45deg, rgba(139, 106, 61, 0.04) 0 1px, transparent 1px 12px),
-      repeating-linear-gradient(-45deg, rgba(139, 106, 61, 0.04) 0 1px, transparent 1px 12px);
-    z-index: 0;
+      repeating-linear-gradient(45deg, rgba(139,106,61,0.04) 0 1px, transparent 1px 12px),
+      repeating-linear-gradient(-45deg, rgba(139,106,61,0.04) 0 1px, transparent 1px 12px);
+    z-index:0;
   }
-  #app { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 16px 14px 28px; min-height: 100%; }
+  #app { position:relative; z-index:1; max-width:760px; margin:0 auto; padding:14px 12px 28px; min-height:100%; }
+  h1.title { text-align:center; font-size:30px; letter-spacing:0.4em; margin:14px 0 4px; color:var(--red-deep); text-shadow:0 2px 0 rgba(139,106,61,0.2); }
+  .subtitle { text-align:center; color:var(--ink-soft); font-size:13px; letter-spacing:0.3em; margin-bottom:18px; }
 
-  h1.title {
-    text-align: center; font-size: 30px; letter-spacing: 0.4em; margin: 18px 0 4px;
-    color: var(--red-deep); text-shadow: 0 2px 0 rgba(139, 106, 61, 0.2);
-  }
-  .subtitle { text-align: center; color: var(--ink-soft); font-size: 13px; letter-spacing: 0.3em; margin-bottom: 22px; }
-
-  .panel {
-    background: linear-gradient(180deg, #f7ecd1, #ead7b2);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
-    padding: 16px 14px;
-    margin-bottom: 14px;
-    position: relative;
-  }
-  .panel::before, .panel::after {
-    content: ""; position: absolute; width: 14px; height: 14px;
-    border: 1px solid var(--gold); pointer-events: none;
-  }
-  .panel::before { top: 4px; left: 4px; border-right: none; border-bottom: none; }
-  .panel::after { bottom: 4px; right: 4px; border-left: none; border-top: none; }
+  .panel { background:linear-gradient(180deg,#f7ecd1,#ead7b2); border:1px solid var(--line); border-radius:6px;
+           box-shadow:0 4px 12px var(--shadow), inset 0 0 0 1px rgba(255,255,255,0.5);
+           padding:14px 12px; margin-bottom:12px; position:relative; }
+  .panel::before, .panel::after { content:""; position:absolute; width:14px; height:14px; border:1px solid var(--gold); pointer-events:none; }
+  .panel::before { top:4px; left:4px; border-right:none; border-bottom:none; }
+  .panel::after  { bottom:4px; right:4px; border-left:none; border-top:none; }
 
   /* 入口屏 */
-  .entry .btn-row { display: flex; gap: 10px; margin-top: 10px; }
-  input[type="text"] {
-    width: 100%; padding: 12px 14px; font-size: 16px; font-family: inherit;
-    border: 1px solid var(--line); border-radius: 4px;
-    background: #fff8e7; color: var(--ink);
-    outline: none;
+  input[type=text],input[type=number] {
+    width:100%; padding:13px 14px; font-size:16px; font-family:inherit;
+    border:1px solid var(--line); border-radius:4px; background:#fff8e7; color:var(--ink); outline:none;
   }
-  input[type="text"]:focus { border-color: var(--red); box-shadow: 0 0 0 2px rgba(139, 26, 26, 0.15); }
-  label.field { display: block; margin-bottom: 12px; }
-  label.field span { font-size: 13px; color: var(--ink-soft); margin-bottom: 6px; display: inline-block; }
+  input:focus { border-color:var(--red); box-shadow:0 0 0 2px rgba(139,26,26,0.15); }
+  label.field { display:block; margin-bottom:12px; }
+  label.field span.lbl { display:block; font-size:13px; color:var(--ink-soft); margin-bottom:6px; }
 
+  .btn-row { display:flex; gap:10px; }
   button.primary, button.ghost {
-    flex: 1; padding: 13px 10px; font-size: 15px; font-family: inherit; cursor: pointer;
-    border-radius: 4px; transition: transform 0.05s ease, box-shadow 0.15s ease;
-    letter-spacing: 0.15em;
+    flex:1; padding:16px 10px; font-size:16px; font-family:inherit; cursor:pointer;
+    border-radius:5px; transition:transform 0.05s ease; letter-spacing:0.15em;
+    min-height:52px;
   }
-  button.primary {
-    background: linear-gradient(180deg, var(--red), var(--red-deep));
-    color: #fbe9c2; border: 1px solid var(--red-deep);
-    box-shadow: 0 2px 0 #3b0d0d;
-  }
-  button.primary:active { transform: translateY(1px); box-shadow: 0 1px 0 #3b0d0d; }
-  button.ghost {
-    background: #fff8e7; color: var(--red-deep); border: 1px solid var(--line);
-    box-shadow: 0 2px 0 rgba(139, 106, 61, 0.4);
-  }
-  button.ghost:active { transform: translateY(1px); }
-  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background:linear-gradient(180deg,var(--red),var(--red-deep)); color:#fbe9c2; border:1px solid var(--red-deep); box-shadow:0 2px 0 #3b0d0d; }
+  button.ghost { background:#fff8e7; color:var(--red-deep); border:1px solid var(--line); box-shadow:0 2px 0 rgba(139,106,61,0.4); }
+  button.primary:active, button.ghost:active { transform:translateY(1px); }
+  button:disabled { opacity:0.45; cursor:not-allowed; }
 
-  .room-code {
-    text-align: center; font-size: 28px; letter-spacing: 0.5em;
-    color: var(--red-deep); font-weight: bold; padding: 10px;
-    background: #fff8e7; border: 2px dashed var(--line); border-radius: 4px;
-    margin: 8px 0 12px;
+  .mode-toggle { display:grid; grid-template-columns:1fr 1fr; gap:6px;
+    background:#fff8e7; border:1px solid var(--line); border-radius:5px; padding:5px; margin-bottom:14px; }
+  .mode-toggle .opt { padding:14px 8px; text-align:center; font-size:15px; cursor:pointer;
+    border-radius:4px; letter-spacing:0.15em; color:var(--ink-soft); transition:all 0.15s;
+    min-height:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .mode-toggle .opt.active { background:linear-gradient(180deg,var(--red),var(--red-deep)); color:#fbe9c2; box-shadow:0 1px 0 #3b0d0d; }
+  .mode-toggle .opt .em { display:block; font-size:20px; margin-bottom:3px; }
+
+  .class-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:6px; }
+  @media (max-width:420px){ .class-grid { grid-template-columns:repeat(2,1fr); } }
+  .class-card {
+    padding:10px 8px; border:1px solid var(--line); border-radius:5px; cursor:pointer;
+    background:#fff8e7; text-align:center; transition:all 0.15s; min-height:90px;
+    display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px;
   }
+  .class-card.selected { background:linear-gradient(180deg,#fadebd,#f0c688); border-color:var(--red); box-shadow:0 0 0 2px rgba(139,26,26,0.18); }
+  .class-card .icon { font-size:24px; line-height:1; }
+  .class-card .name { font-size:13px; font-weight:bold; color:var(--red-deep); letter-spacing:0.1em; }
+  .class-card .desc { font-size:11px; color:var(--ink-soft); line-height:1.4; margin-top:2px; }
+
+  .room-code { text-align:center; font-size:30px; letter-spacing:0.5em; color:var(--red-deep); font-weight:bold;
+    padding:12px; background:#fff8e7; border:2px dashed var(--line); border-radius:4px; margin:8px 0 12px; }
 
   /* 游戏屏 */
   .turn-bar {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 8px 12px; margin-bottom: 12px;
-    background: linear-gradient(180deg, #5b1a1a, #3b0d0d);
-    color: #fbe9c2; border-radius: 4px;
-    font-size: 14px; letter-spacing: 0.15em;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 14px; margin-bottom:10px;
+    background:linear-gradient(180deg,#5b1a1a,#3b0d0d); color:#fbe9c2; border-radius:4px;
+    font-size:14px; letter-spacing:0.15em;
   }
-  .turn-bar .turn-num { font-size: 18px; font-weight: bold; color: #ffd278; }
+  .turn-bar .turn-num { font-size:18px; font-weight:bold; color:#ffd278; }
 
-  .players { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .pcard {
-    background: linear-gradient(180deg, #f7ecd1, #ead7b2);
-    border: 1px solid var(--line); border-radius: 6px;
-    padding: 10px 10px 8px; position: relative;
-    box-shadow: 0 2px 6px var(--shadow);
-  }
-  .pcard.you { border-color: var(--red); }
-  .pcard h3 {
-    margin: 0 0 6px; font-size: 14px; letter-spacing: 0.2em; color: var(--red-deep);
-    display: flex; justify-content: space-between; align-items: baseline;
-  }
-  .pcard h3 .who { font-size: 11px; color: var(--ink-soft); letter-spacing: 0.1em; }
-  .rank-badge {
-    display: inline-block; padding: 3px 8px; border-radius: 2px;
-    background: linear-gradient(180deg, var(--gold), #8c6a1f);
-    color: #fff8e7; font-size: 12px; letter-spacing: 0.15em;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
-  }
-  .stat { font-size: 12px; margin: 4px 0; color: var(--ink); }
-  .stat .lbl { display: inline-block; width: 38px; color: var(--ink-soft); }
-  .bar { display: inline-block; vertical-align: middle; width: calc(100% - 78px); height: 8px; background: #d8c393; border: 1px solid var(--line); border-radius: 2px; overflow: hidden; }
-  .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--red), var(--gold)); transition: width 0.4s; }
-  .bar.fav > span { background: linear-gradient(90deg, #d2467d, #ff7eb3); }
-  .bar.pow > span { background: linear-gradient(90deg, #2e6b9c, #5fa8d3); }
-  .bar.rep > span { background: linear-gradient(90deg, #8b6a3d, #d4a64a); }
-  .bar.energy > span { background: linear-gradient(90deg, #5a8c3a, #b1d96e); }
-  .bar .num { position: absolute; }
-  .stat .v { float: right; font-variant-numeric: tabular-nums; color: var(--ink); }
-  .extras { font-size: 11px; color: var(--ink-soft); margin-top: 6px; min-height: 16px; }
-  .extras .tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--line); border-radius: 2px; margin-right: 4px; background: #fff8e7; }
-  .extras .tag.pregnant { color: #b73977; border-color: #b73977; }
-  .extras .tag.imprisoned { color: #6b1a1a; border-color: #6b1a1a; }
-  .extras .tag.children { color: var(--gold); border-color: var(--gold); }
+  .players { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .pcard { background:linear-gradient(180deg,#f7ecd1,#ead7b2); border:1px solid var(--line); border-radius:6px;
+           padding:10px 9px 8px; box-shadow:0 2px 6px var(--shadow); }
+  .pcard.you { border-color:var(--red); }
+  .pcard h3 { margin:0 0 6px; font-size:13px; letter-spacing:0.18em; color:var(--red-deep);
+              display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:4px; }
+  .pcard .who { font-size:11px; color:var(--ink-soft); letter-spacing:0.1em; }
+  .pcard .cls-tag { display:inline-block; padding:2px 7px; font-size:11px; border-radius:2px;
+                    background:rgba(184,134,42,0.18); border:1px solid var(--gold); color:var(--ink-soft); }
+  .rank-badge { display:inline-block; padding:3px 8px; border-radius:2px;
+                background:linear-gradient(180deg,var(--gold),#8c6a1f); color:#fff8e7;
+                font-size:12px; letter-spacing:0.15em; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.3); }
+  .stat { font-size:12px; margin:3px 0; color:var(--ink); }
+  .stat .lbl { display:inline-block; width:38px; color:var(--ink-soft); }
+  .bar { display:inline-block; vertical-align:middle; width:calc(100% - 78px); height:8px;
+         background:#d8c393; border:1px solid var(--line); border-radius:2px; overflow:hidden; }
+  .bar > span { display:block; height:100%; transition:width 0.4s; background:linear-gradient(90deg,var(--red),var(--gold)); }
+  .bar.fav > span { background:linear-gradient(90deg,#d2467d,#ff7eb3); }
+  .bar.pow > span { background:linear-gradient(90deg,#2e6b9c,#5fa8d3); }
+  .bar.rep > span { background:linear-gradient(90deg,#8b6a3d,#d4a64a); }
+  .bar.energy > span { background:linear-gradient(90deg,#5a8c3a,#b1d96e); }
+  .stat .v { float:right; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .extras { font-size:11px; color:var(--ink-soft); margin-top:6px; min-height:16px; }
+  .extras .tag { display:inline-block; padding:1px 6px; border:1px solid var(--line); border-radius:2px; margin-right:4px; background:#fff8e7; }
+  .extras .tag.pregnant { color:#b73977; border-color:#b73977; }
+  .extras .tag.imprisoned { color:#6b1a1a; border-color:#6b1a1a; }
+  .extras .tag.children { color:var(--gold); border-color:var(--gold); }
+  .extras .tag.shield { color:#2e6b9c; border-color:#2e6b9c; }
 
-  .actions {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
-    margin: 12px 0;
-  }
-  .act-btn {
-    padding: 10px 4px; font-size: 13px; font-family: inherit; cursor: pointer;
-    background: linear-gradient(180deg, #fff8e7, #ecd9b3);
-    color: var(--ink); border: 1px solid var(--line);
-    border-radius: 4px; min-height: 56px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    line-height: 1.3;
-    box-shadow: 0 2px 0 rgba(139, 106, 61, 0.4);
-    transition: transform 0.05s ease;
-  }
-  .act-btn:active:not(:disabled) { transform: translateY(1px); }
-  .act-btn .em { font-size: 18px; margin-bottom: 2px; }
-  .act-btn .lbl { font-size: 12px; letter-spacing: 0.1em; }
-  .act-btn:disabled { opacity: 0.4; }
-  .act-btn.chosen {
-    background: linear-gradient(180deg, var(--red), var(--red-deep));
-    color: #fbe9c2; border-color: var(--red-deep);
+  .actions { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:12px 0; }
+  @media (max-width:480px){ .actions { grid-template-columns:repeat(4,1fr); gap:6px; } }
+  .act-btn { padding:14px 4px; font-size:14px; font-family:inherit; cursor:pointer;
+             background:linear-gradient(180deg,#fff8e7,#ecd9b3); color:var(--ink); border:1px solid var(--line);
+             border-radius:6px; min-height:78px;
+             display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.3;
+             box-shadow:0 2px 0 rgba(139,106,61,0.4); transition:transform 0.05s ease; }
+  .act-btn:active:not(:disabled){ transform:translateY(1px); }
+  .act-btn .em { font-size:26px; margin-bottom:4px; }
+  .act-btn .lbl { font-size:13px; letter-spacing:0.1em; }
+  .act-btn:disabled { opacity:0.4; }
+  .act-btn.chosen { background:linear-gradient(180deg,var(--red),var(--red-deep)); color:#fbe9c2; border-color:var(--red-deep); }
+  @media (max-width:380px){
+    .act-btn { min-height:68px; padding:10px 2px; }
+    .act-btn .em { font-size:22px; }
+    .act-btn .lbl { font-size:11px; }
   }
 
-  .ready-row { display: flex; justify-content: space-around; font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
-  .ready-row .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c9b07a; margin-right: 5px; vertical-align: middle; }
-  .ready-row .dot.ok { background: #5a8c3a; box-shadow: 0 0 4px #5a8c3a; }
+  .ready-row { display:flex; justify-content:space-around; font-size:12px; color:var(--ink-soft); margin-top:6px; }
+  .ready-row .dot { display:inline-block; width:8px; height:8px; border-radius:50%;
+                    background:#c9b07a; margin-right:5px; vertical-align:middle; }
+  .ready-row .dot.ok { background:#5a8c3a; box-shadow:0 0 4px #5a8c3a; }
 
-  .log {
-    background: #fff8e7; border: 1px solid var(--line); border-radius: 4px;
-    padding: 10px 12px; max-height: 220px; overflow-y: auto;
-    font-size: 13px; line-height: 1.7; color: var(--ink);
-    box-shadow: inset 0 0 8px rgba(139, 106, 61, 0.1);
+  /* 卡牌手牌区 */
+  .hand-wrap { background:linear-gradient(180deg,#f7ecd1,#ead7b2); border:1px solid var(--line); border-radius:5px;
+              padding:8px 10px; margin-bottom:10px; }
+  .hand-title { font-size:12px; color:var(--red-deep); letter-spacing:0.2em; margin-bottom:6px; display:flex; justify-content:space-between; }
+  .hand { display:flex; gap:6px; flex-wrap:wrap; }
+  .card-item {
+    flex:1; min-width:90px; max-width:160px; padding:8px 6px;
+    background:linear-gradient(180deg,#fff8e7,#ecd9b3); border:1px solid var(--gold);
+    border-radius:5px; cursor:pointer; text-align:center;
+    box-shadow:0 2px 0 rgba(184,134,42,0.4); transition:transform 0.05s;
   }
-  .log .turn-divider { color: var(--red-deep); font-weight: bold; margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 6px; }
+  .card-item:active:not(.disabled) { transform:translateY(1px); }
+  .card-item.disabled { opacity:0.5; cursor:not-allowed; }
+  .card-item .ic { font-size:22px; line-height:1; }
+  .card-item .nm { font-size:13px; font-weight:bold; color:var(--red-deep); margin-top:2px; }
+  .card-item .ds { font-size:10px; color:var(--ink-soft); margin-top:2px; line-height:1.3; }
+  .empty-hand { font-size:11px; color:var(--ink-soft); padding:8px; opacity:0.6; }
 
-  .end-banner {
-    text-align: center; padding: 18px; border: 2px solid var(--red-deep);
-    background: linear-gradient(180deg, #fff8e7, #f0d9aa); border-radius: 6px;
-    margin: 14px 0;
-  }
-  .end-banner h2 { margin: 0 0 6px; color: var(--red-deep); letter-spacing: 0.3em; }
-  .end-banner .winner { font-size: 22px; color: var(--gold); font-weight: bold; margin: 8px 0; letter-spacing: 0.2em; }
-  .end-banner .reason { color: var(--ink-soft); font-size: 13px; }
+  .log { background:#fff8e7; border:1px solid var(--line); border-radius:4px;
+         padding:10px 12px; max-height:200px; overflow-y:auto;
+         font-size:13px; line-height:1.7; color:var(--ink);
+         box-shadow:inset 0 0 8px rgba(139,106,61,0.1); }
+  .log .turn-divider { color:var(--red-deep); font-weight:bold; margin-top:6px; border-top:1px dashed var(--line); padding-top:6px; }
 
-  .toast {
-    position: fixed; left: 50%; top: 18%; transform: translateX(-50%);
-    background: rgba(43, 24, 16, 0.92); color: #fbe9c2;
-    padding: 10px 18px; border-radius: 4px; font-size: 14px;
-    pointer-events: none; opacity: 0; transition: opacity 0.25s;
-    z-index: 100; max-width: 80%;
-  }
-  .toast.show { opacity: 1; }
+  .end-banner { text-align:center; padding:18px; border:2px solid var(--red-deep);
+                background:linear-gradient(180deg,#fff8e7,#f0d9aa); border-radius:6px; margin:14px 0; }
+  .end-banner h2 { margin:0 0 6px; color:var(--red-deep); letter-spacing:0.3em; }
+  .end-banner .winner { font-size:22px; color:var(--gold); font-weight:bold; margin:8px 0; letter-spacing:0.2em; }
+  .end-banner .reason { color:var(--ink-soft); font-size:13px; }
 
-  .hint { font-size: 12px; color: var(--ink-soft); margin-top: 8px; line-height: 1.6; }
-  .hint code { background: rgba(139, 26, 26, 0.08); padding: 1px 4px; border-radius: 2px; }
+  .toast { position:fixed; left:50%; top:18%; transform:translateX(-50%);
+           background:rgba(43,24,16,0.92); color:#fbe9c2; padding:11px 18px; border-radius:4px; font-size:14px;
+           pointer-events:none; opacity:0; transition:opacity 0.25s; z-index:200; max-width:80%; }
+  .toast.show { opacity:1; }
 
-  /* 模式选择（入口屏） */
-  .mode-toggle {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-    background: #fff8e7; border: 1px solid var(--line); border-radius: 4px;
-    padding: 4px; margin-bottom: 12px;
-  }
-  .mode-toggle .opt {
-    padding: 10px 8px; text-align: center; font-size: 14px; cursor: pointer;
-    border-radius: 3px; letter-spacing: 0.15em; color: var(--ink-soft);
-    transition: all 0.15s;
-  }
-  .mode-toggle .opt.active {
-    background: linear-gradient(180deg, var(--red), var(--red-deep));
-    color: #fbe9c2; box-shadow: 0 1px 0 #3b0d0d;
-  }
-  .mode-toggle .opt .em { display: block; font-size: 18px; margin-bottom: 2px; }
+  .hint { font-size:12px; color:var(--ink-soft); margin-top:8px; line-height:1.6; }
 
-  /* 五子棋棋盘（嵌入式 + 浮层都用） */
-  .board-wrap {
-    background: linear-gradient(135deg, #d9b67a, #b8862a);
-    border: 2px solid var(--red-deep);
-    padding: 10px; border-radius: 6px;
-    box-shadow: 0 4px 14px var(--shadow);
-    position: relative;
-  }
-  .board-canvas {
-    display: block; width: 100%; max-width: 480px; margin: 0 auto;
-    background: #d9b67a;
-    border-radius: 4px;
-    touch-action: manipulation;
-  }
-  .board-info {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 8px 10px; margin-bottom: 8px;
-    background: rgba(43, 24, 16, 0.6); color: #fbe9c2;
-    border-radius: 4px; font-size: 13px;
-  }
-  .board-info .stone-icon {
-    display: inline-block; width: 14px; height: 14px;
-    border-radius: 50%; vertical-align: middle; margin-right: 4px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  }
-  .board-info .stone-icon.black { background: #1a1a1a; }
-  .board-info .stone-icon.white { background: #f5f5f0; border: 1px solid #888; }
-  .board-info .turn-tip { color: #ffd278; font-weight: bold; }
-  .board-info .timer { font-variant-numeric: tabular-nums; }
-  .duel-banner {
-    text-align: center; padding: 8px 10px; margin-bottom: 8px;
-    background: linear-gradient(180deg, #8b1a1a, #5b1a1a);
-    color: #fbe9c2; border-radius: 4px;
-    letter-spacing: 0.2em; font-size: 14px;
-  }
-
-  /* 五子棋全屏覆盖（陷害决斗） */
+  /* === 决斗浮层（陷害决斗 / 全屏五子棋等） === */
   .duel-overlay {
-    position: fixed; inset: 0; background: rgba(43, 24, 16, 0.85);
-    z-index: 50; display: flex; align-items: center; justify-content: center;
-    padding: 12px; overflow-y: auto;
+    position:fixed; inset:0; background:rgba(43,24,16,0.92);
+    z-index:120; display:flex; align-items:center; justify-content:center;
+    padding:0; overflow-y:auto;
   }
-  .duel-overlay .duel-panel {
-    background: linear-gradient(180deg, #f7ecd1, #ead7b2);
-    border: 2px solid var(--red-deep); border-radius: 6px;
-    padding: 14px; max-width: 540px; width: 100%;
+  .duel-panel { background:linear-gradient(180deg,#f7ecd1,#ead7b2); border:2px solid var(--red-deep); border-radius:6px;
+                padding:14px; max-width:560px; width:100%; max-height:96vh; overflow-y:auto; margin:8px; }
+  /* 五子棋决斗专用：尽量铺满屏幕，桌面有上限 720px */
+  .duel-panel.fullscreen {
+    max-width: min(96vh, 96vw, 720px);
+    width: min(96vh, 96vw, 720px);
+    padding:10px;
+    margin:8px;
+    border-radius:6px;
+    display:flex; flex-direction:column;
+  }
+  .duel-banner { text-align:center; padding:10px; margin-bottom:10px;
+                 background:linear-gradient(180deg,#8b1a1a,#5b1a1a); color:#fbe9c2;
+                 border-radius:4px; letter-spacing:0.18em; font-size:14px; }
+  .duel-info { display:flex; justify-content:space-between; align-items:center;
+               padding:10px 12px; margin-bottom:10px;
+               background:rgba(43,24,16,0.6); color:#fbe9c2; border-radius:4px; font-size:14px; }
+  .duel-info .timer { font-variant-numeric:tabular-nums; color:#ffd278; font-weight:bold; }
+  .stone-icon { display:inline-block; width:16px; height:16px; border-radius:50%;
+                vertical-align:middle; margin-right:5px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.3); }
+  .stone-icon.black { background:#1a1a1a; }
+  .stone-icon.white { background:#f5f5f0; border:1px solid #888; }
+
+  /* 五子棋画布 */
+  .board-canvas {
+    display:block; width:100%; margin:0 auto;
+    background:#d9b67a; border-radius:4px; touch-action:manipulation; cursor:crosshair;
+  }
+  /* 全屏决斗里的画布：尽量大 */
+  .duel-panel.fullscreen .board-canvas {
+    max-width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  /* 嵌入 g-canvas（独立模式）的画布也能更大 */
+  #screen-gomoku .board-canvas { max-width:560px; }
+
+  /* RPS UI */
+  .rps-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:16px 0; }
+  .rps-btn { padding:22px 8px; font-size:48px; font-family:inherit; cursor:pointer;
+             background:linear-gradient(180deg,#fff8e7,#ecd9b3); color:var(--ink);
+             border:2px solid var(--line); border-radius:8px; min-height:120px;
+             display:flex; flex-direction:column; align-items:center; justify-content:center;
+             box-shadow:0 3px 0 rgba(139,106,61,0.4); transition:transform 0.05s; }
+  .rps-btn:active:not(:disabled){ transform:translateY(2px); box-shadow:0 1px 0 rgba(139,106,61,0.4); }
+  .rps-btn:disabled { opacity:0.45; cursor:not-allowed; }
+  .rps-btn .nm { font-size:14px; margin-top:6px; letter-spacing:0.1em; color:var(--red-deep); }
+  .rps-rounds { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:10px 0; }
+  .rps-round { font-size:13px; padding:7px 12px; background:#fff8e7; border:1px solid var(--line); border-radius:4px; }
+  @media (max-width:380px){
+    .rps-btn { min-height:96px; font-size:38px; padding:16px 4px; }
+    .rps-btn .nm { font-size:12px; }
   }
 
-  /* 极小屏适配（窄手机） */
-  @media (max-width: 360px) {
-    h1.title { font-size: 24px; }
-    .actions { grid-template-columns: repeat(3, 1fr); }
-    .pcard h3 { flex-direction: column; align-items: flex-start; }
+  /* Guess UI */
+  .guess-input {
+    display:flex; gap:10px; align-items:center; margin:16px 0;
+  }
+  .guess-input input { flex:1; font-size:28px; text-align:center; padding:20px 8px; min-height:64px; }
+  .guess-input button { padding:20px 24px; font-size:15px; min-height:64px; }
+  /* 数字快捷选择 */
+  .guess-quick { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:8px; }
+  .guess-quick button {
+    padding:12px 4px; font-size:14px; font-family:inherit; cursor:pointer;
+    background:#fff8e7; color:var(--ink); border:1px solid var(--line); border-radius:4px;
+    min-height:48px;
+  }
+  .guess-quick button:active:not(:disabled){ background:#fadebd; }
+
+  /* 计分牌 */
+  .duel-score { display:flex; justify-content:space-around; padding:6px 8px; margin-bottom:6px;
+                background:rgba(255,248,231,0.5); border-radius:4px; font-size:13px; }
+  .duel-score .me { color:var(--red-deep); font-weight:bold; }
+  .duel-score .op { color:var(--ink-soft); }
+
+  /* 极小屏适配 */
+  @media (max-width:360px) {
+    h1.title { font-size:24px; }
+    .pcard h3 { flex-direction:column; align-items:flex-start; }
+    .act-btn { min-height:58px; padding:10px 2px; }
+    .act-btn .em { font-size:18px; }
   }
 </style>
 </head>
 <body>
-
 <div id="app">
   <h1 class="title">后&nbsp;宫&nbsp;风&nbsp;云</h1>
-  <div class="subtitle">— 双 人 联 机 宫 斗 —</div>
+  <div class="subtitle">— 双 人 联 机 v3.1 —</div>
 
   <!-- 入口屏 -->
-  <section class="panel entry" id="screen-entry">
+  <section class="panel" id="screen-entry">
     <div class="mode-toggle" id="mode-toggle">
       <div class="opt active" data-mode="palace"><span class="em">👑</span>宫 斗 对 决</div>
       <div class="opt" data-mode="gomoku"><span class="em">⚫</span>五 子 棋</div>
     </div>
     <label class="field">
-      <span id="name-label">入宫芳名</span>
+      <span class="lbl" id="name-label">入宫芳名</span>
       <input id="name-input" type="text" maxlength="8" placeholder="例：婉嫔" />
     </label>
+
+    <div id="class-section">
+      <div class="lbl" style="font-size:13px; color:var(--ink-soft); margin-bottom:6px;">出身（决定起始数值）</div>
+      <div class="class-grid" id="class-grid"></div>
+    </div>
+
     <label class="field" id="join-field" style="display:none">
-      <span>房间号（5 位字母数字）</span>
+      <span class="lbl">房间号（5 位字母数字）</span>
       <input id="code-input" type="text" maxlength="5" placeholder="例：A7K3M" autocapitalize="characters" />
     </label>
-    <div class="btn-row">
+    <div class="btn-row" id="main-btn-row">
       <button class="primary" id="btn-create">开 局 创 房</button>
       <button class="ghost" id="btn-show-join">输 码 加 入</button>
     </div>
@@ -300,65 +307,67 @@
       <button class="ghost" id="btn-back">返 回</button>
       <button class="primary" id="btn-join">入 房</button>
     </div>
-    <p class="hint" id="entry-hint">游戏规则：每月双方暗中选择一项动作，同步揭晓结算。先晋为皇后，或多月内综合分高者胜。陷害动作触发"棋决胜负"小局，连五子者陷害成功。</p>
+    <p class="hint" id="entry-hint">每月暗中选择动作，同步揭晓。先晋为皇后或多月内综合分高者胜。陷害动作触发随机决斗（五子棋/石头剪刀布/猜大小），胜方陷害成功。</p>
   </section>
 
-  <!-- 等待对手 -->
+  <!-- 大厅 -->
   <section class="panel" id="screen-lobby" style="display:none">
-    <h3 style="margin:0 0 8px; color: var(--red-deep); letter-spacing: 0.2em;">候 驾 中</h3>
+    <h3 style="margin:0 0 8px; color:var(--red-deep); letter-spacing:0.2em;">候 驾 中</h3>
     <div class="room-code" id="room-code">-----</div>
-    <p class="hint">将房间号告诉对手，让她在另一台手机/浏览器上选择"输码加入"输入此号即可。也可以直接复制本页地址给她，让她在同一域名下加入。</p>
-    <button class="ghost" id="btn-copy" style="width:100%; margin-top: 6px;">复 制 房 间 号</button>
+    <p class="hint">把房间号告诉对手，让她在另一台手机/浏览器输码加入。</p>
+    <button class="ghost" id="btn-copy" style="width:100%; margin-top:6px;">复 制 房 间 号</button>
   </section>
 
-  <!-- 游戏屏 -->
+  <!-- 宫斗游戏屏 -->
   <section id="screen-game" style="display:none">
     <div class="turn-bar">
-      <span>第 <span class="turn-num" id="turn-num">1</span> 月 / 共 <span id="max-turns">10</span> 月</span>
+      <span>第 <span class="turn-num" id="turn-num">1</span> 月 / 共 <span id="max-turns">15</span> 月</span>
       <span id="phase-tip">请选择本月动作</span>
     </div>
 
     <div class="players">
       <div class="pcard you">
-        <h3><span id="you-name">你</span><span class="who">本宫</span></h3>
+        <h3><span id="you-name">你</span><span class="cls-tag" id="you-cls">—</span></h3>
         <div style="margin-bottom:6px"><span class="rank-badge" id="you-rank">答应</span></div>
         <div class="stat"><span class="lbl">圣宠</span><span class="bar fav"><span id="you-favor-bar"></span></span><span class="v" id="you-favor">0</span></div>
         <div class="stat"><span class="lbl">势力</span><span class="bar pow"><span id="you-power-bar"></span></span><span class="v" id="you-power">0</span></div>
         <div class="stat"><span class="lbl">名望</span><span class="bar rep"><span id="you-rep-bar"></span></span><span class="v" id="you-rep">0</span></div>
         <div class="stat"><span class="lbl">体力</span><span class="bar energy"><span id="you-energy-bar"></span></span><span class="v" id="you-energy">0</span></div>
-        <div class="stat" style="font-size:11px;color:var(--ink-soft);">
-          美 <span id="you-beauty" class="v">0</span>　
-          才 <span id="you-talent" class="v">0</span>　
-          计 <span id="you-scheme" class="v">0</span>
+        <div class="stat" style="font-size:11px; color:var(--ink-soft);">
+          美 <span id="you-beauty" class="v">0</span>　才 <span id="you-talent" class="v">0</span>　计 <span id="you-scheme" class="v">0</span>
         </div>
         <div class="extras" id="you-extras"></div>
       </div>
-
       <div class="pcard">
-        <h3><span id="op-name">对手</span><span class="who">劲敌</span></h3>
+        <h3><span id="op-name">对手</span><span class="cls-tag" id="op-cls">—</span></h3>
         <div style="margin-bottom:6px"><span class="rank-badge" id="op-rank">答应</span></div>
         <div class="stat"><span class="lbl">圣宠</span><span class="bar fav"><span id="op-favor-bar"></span></span><span class="v" id="op-favor">0</span></div>
         <div class="stat"><span class="lbl">势力</span><span class="bar pow"><span id="op-power-bar"></span></span><span class="v" id="op-power">0</span></div>
         <div class="stat"><span class="lbl">名望</span><span class="bar rep"><span id="op-rep-bar"></span></span><span class="v" id="op-rep">0</span></div>
         <div class="stat"><span class="lbl">体力</span><span class="bar energy"><span id="op-energy-bar"></span></span><span class="v" id="op-energy">0</span></div>
-        <div class="stat" style="font-size:11px;color:var(--ink-soft);">
-          美 <span id="op-beauty" class="v">0</span>　
-          才 <span id="op-talent" class="v">0</span>　
-          计 <span id="op-scheme" class="v">0</span>
+        <div class="stat" style="font-size:11px; color:var(--ink-soft);">
+          美 <span id="op-beauty" class="v">0</span>　才 <span id="op-talent" class="v">0</span>　计 <span id="op-scheme" class="v">0</span>
         </div>
         <div class="extras" id="op-extras"></div>
       </div>
     </div>
 
-    <div class="actions" id="action-grid"></div>
+    <div class="hand-wrap" id="hand-wrap">
+      <div class="hand-title">
+        <span>📜 手牌</span>
+        <span id="hand-tip" style="color:var(--ink-soft); letter-spacing:0.05em;">点击使用（每月限一张）</span>
+      </div>
+      <div class="hand" id="hand"></div>
+    </div>
 
+    <div class="actions" id="action-grid"></div>
     <div class="ready-row">
       <span><span class="dot" id="you-dot"></span>本宫已抉择</span>
       <span><span class="dot" id="op-dot"></span>对手已抉择</span>
     </div>
 
-    <div class="panel" style="margin-top: 12px; padding: 8px 10px;">
-      <div style="font-size:13px; color: var(--red-deep); letter-spacing: 0.2em; margin-bottom: 6px;">起 居 注</div>
+    <div class="panel" style="margin-top:10px; padding:8px 10px;">
+      <div style="font-size:13px; color:var(--red-deep); letter-spacing:0.2em; margin-bottom:6px;">起 居 注</div>
       <div class="log" id="log"></div>
     </div>
 
@@ -366,111 +375,100 @@
       <h2>本 局 终 结</h2>
       <div class="winner" id="winner-name"></div>
       <div class="reason" id="end-reason"></div>
-      <div style="margin-top: 12px;">
-        <button class="primary" id="btn-rematch" style="max-width: 200px; margin: 0 auto;">再 战 一 局</button>
-      </div>
+      <div style="margin-top:12px;"><button class="primary" id="btn-rematch" style="max-width:200px; margin:0 auto;">再 战 一 局</button></div>
     </div>
   </section>
 
-  <!-- 五子棋独立模式屏 -->
+  <!-- 五子棋独立屏 -->
   <section id="screen-gomoku" style="display:none">
     <div class="turn-bar">
-      <span>五 子 棋 · 第 <span id="g-round">1</span> 局</span>
+      <span>五 子 棋 · 联 机 对 战</span>
       <span id="g-phase-tip">开局</span>
     </div>
-    <div class="players">
-      <div class="pcard you">
-        <h3><span id="g-you-name">你</span><span class="who" id="g-you-color">黑</span></h3>
-        <div class="stat">胜 <span class="v" id="g-you-score">0</span></div>
-      </div>
-      <div class="pcard">
-        <h3><span id="g-op-name">对手</span><span class="who" id="g-op-color">白</span></h3>
-        <div class="stat">胜 <span class="v" id="g-op-score">0</span></div>
-      </div>
+    <div class="duel-score">
+      <span class="me"><span id="g-you-name">你</span> · <span id="g-you-color">—</span> <span id="g-you-score">0</span></span>
+      <span class="op"><span id="g-op-name">对手</span> · <span id="g-op-color">—</span> <span id="g-op-score">0</span></span>
     </div>
-    <div class="board-wrap" id="g-board-wrap" style="margin-top: 12px;">
-      <div class="board-info">
-        <span><span class="stone-icon" id="g-cur-stone"></span><span id="g-cur-name">轮到</span></span>
-        <span class="timer" id="g-timer">--</span>
-      </div>
-      <canvas id="g-canvas" class="board-canvas"></canvas>
+    <div class="duel-info">
+      <span><span class="stone-icon" id="g-cur-stone"></span><span id="g-cur-name">轮到</span></span>
+      <span class="timer" id="g-timer">--</span>
     </div>
-    <div class="panel" style="margin-top: 12px; padding: 8px 10px;">
-      <div style="font-size:13px; color: var(--red-deep); letter-spacing: 0.2em; margin-bottom: 6px;">棋 谱 / 战 报</div>
-      <div class="log" id="g-log" style="max-height: 120px;"></div>
+    <canvas id="g-canvas" class="board-canvas"></canvas>
+    <div class="panel" style="margin-top:10px; padding:8px 10px;">
+      <div style="font-size:13px; color:var(--red-deep); letter-spacing:0.2em; margin-bottom:6px;">棋 谱</div>
+      <div class="log" id="g-log" style="max-height:120px;"></div>
     </div>
     <div class="end-banner" id="g-end-banner" style="display:none">
       <h2>本 局 已 终</h2>
       <div class="winner" id="g-winner-name"></div>
-      <div style="margin-top: 12px;">
-        <button class="primary" id="g-btn-rematch" style="max-width: 200px; margin: 0 auto;">再 来 一 局</button>
-      </div>
+      <div style="margin-top:12px;"><button class="primary" id="g-btn-rematch" style="max-width:200px; margin:0 auto;">再 来 一 局</button></div>
     </div>
   </section>
 
-  <p class="hint" style="text-align:center; margin-top: 18px;">
-    《后宫风云》 · 双人联机版 · v3.0 · <a href="/admin.html" style="color:var(--ink-soft); text-decoration: none;">管理</a>
+  <p class="hint" style="text-align:center; margin-top:16px;">
+    《后宫风云》 v3.1 · <a href="/admin.html" style="color:var(--ink-soft);">管理</a>
   </p>
 </div>
 
-<!-- 陷害决斗浮层 -->
+<!-- 决斗浮层 -->
 <div class="duel-overlay" id="duel-overlay" style="display:none">
   <div class="duel-panel">
-    <div class="duel-banner">⚔️ 棋 决 胜 负 · 五 子 连 珠 陷 害 ⚔️</div>
-    <div class="board-info">
-      <span><span class="stone-icon" id="d-cur-stone"></span><span id="d-cur-name">轮到</span></span>
-      <span class="timer" id="d-timer">--</span>
+    <div class="duel-banner" id="duel-banner">⚔️ 棋 决 胜 负 ⚔️</div>
+    <div class="duel-info">
+      <span id="duel-info-left">—</span>
+      <span class="timer" id="duel-timer">--</span>
     </div>
-    <canvas id="d-canvas" class="board-canvas"></canvas>
-    <p class="hint" style="text-align:center; margin-top: 8px;">
-      连五子者陷害成功，对方圣宠大损；输者陷害落空。<br>
-      超时即判负。
-    </p>
+    <div id="duel-content"><!-- 动态填充：canvas / rps按钮 / guess输入 --></div>
+    <p class="hint" id="duel-hint" style="text-align:center; margin-top:8px;"></p>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
+<script src="/socket.io/socket.io.js"></script><script>
 const ACTION_DEFS = [
   { id: 'serve',         em: '🌹', label: '侍寝',   tip: '消耗 25 体力，依美貌+才艺获取圣宠' },
   { id: 'train_talent',  em: '📚', label: '习才艺', tip: '消耗 10 体力，提升才艺' },
   { id: 'train_beauty',  em: '💄', label: '修容貌', tip: '消耗 10 体力，提升美貌' },
   { id: 'build_power',   em: '🌐', label: '结党羽', tip: '消耗 10 体力，提升势力' },
-  { id: 'sabotage',      em: '🗡️', label: '设陷害', tip: '消耗 20 体力，凭心计削弱对手圣宠' },
-  { id: 'defend',        em: '🛡️', label: '自保身', tip: '恢复体力，免疫陷害，提升心计' },
-  { id: 'try_child',     em: '👶', label: '求子嗣', tip: '需圣宠≥50，消耗 30 体力，约 55% 受孕' },
-  { id: 'promote',       em: '👑', label: '争晋位', tip: '满足圣宠/势力门槛即可晋升位分' },
+  { id: 'sabotage',      em: '🗡️', label: '设陷害', tip: '消耗 20 体力，触发随机决斗' },
+  { id: 'defend',        em: '🛡️', label: '自保身', tip: '恢复体力，免疫陷害' },
+  { id: 'try_child',     em: '👶', label: '求子嗣', tip: '需圣宠≥50，约 55% 受孕' },
+  { id: 'promote',       em: '👑', label: '争晋位', tip: '满足条件即可晋升位分' },
 ];
-
 const RANK_REQ = [
-  { favor: 25, power: 0,  rep: 0,  children: 0 },
-  { favor: 40, power: 15, rep: 15, children: 0 },
-  { favor: 50, power: 25, rep: 25, children: 0 },
-  { favor: 60, power: 40, rep: 35, children: 0 },
-  { favor: 65, power: 55, rep: 45, children: 0 },
-  { favor: 70, power: 65, rep: 55, children: 0 },
-  { favor: 80, power: 80, rep: 70, children: 1 },
+  { favor:25, power:0,  rep:0,  children:0 },
+  { favor:40, power:15, rep:15, children:0 },
+  { favor:50, power:25, rep:25, children:0 },
+  { favor:60, power:40, rep:35, children:0 },
+  { favor:65, power:55, rep:45, children:0 },
+  { favor:70, power:65, rep:55, children:0 },
+  { favor:80, power:80, rep:70, children:1 },
 ];
-
 const $ = (id) => document.getElementById(id);
-const socket = io({ transports: ['websocket', 'polling'] });
+const socket = io({ transports:['websocket','polling'] });
 
+let META = { classes: [], duels: [], cards: [] };
 let currentRoomCode = null;
 let lastState = null;
 let myChoice = null;
-let lastLogTotal = -1;
-let lastGLogTotal = -1;
+let lastLogTotal = -1, lastGLogTotal = -1;
 let selectedMode = 'palace';
+let selectedClass = 'default';
 let timerHandle = null;
+let cardDescById = {};
+
+fetch('/api/meta').then((r) => r.json()).then((j) => {
+  if (!j.ok) return;
+  META = j;
+  cardDescById = {};
+  for (const c of j.cards) cardDescById[c.id] = c;
+  renderClassGrid();
+});
 
 function showToast(msg) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => t.classList.remove('show'), 2200);
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(showToast._t); showToast._t = setTimeout(() => t.classList.remove('show'), 2300);
 }
 
 function showScreen(name) {
@@ -480,7 +478,7 @@ function showScreen(name) {
   $('screen-gomoku').style.display = name === 'gomoku' ? '' : 'none';
 }
 
-// ============== 模式切换 ==============
+// 模式切换
 document.querySelectorAll('#mode-toggle .opt').forEach((el) => {
   el.onclick = () => {
     document.querySelectorAll('#mode-toggle .opt').forEach((x) => x.classList.remove('active'));
@@ -488,53 +486,62 @@ document.querySelectorAll('#mode-toggle .opt').forEach((el) => {
     selectedMode = el.dataset.mode;
     $('name-label').textContent = selectedMode === 'gomoku' ? '棋手昵称' : '入宫芳名';
     $('name-input').placeholder = selectedMode === 'gomoku' ? '例：黑子' : '例：婉嫔';
+    $('class-section').style.display = selectedMode === 'gomoku' ? 'none' : '';
     $('entry-hint').textContent = selectedMode === 'gomoku'
-      ? '五子棋规则：黑先白后，先连成五子者胜。每步 60 秒思考时间，超时即负。'
-      : '游戏规则：每月双方暗中选择一项动作，同步揭晓结算。先晋为皇后，或多月内综合分高者胜。陷害动作触发"棋决胜负"小局，连五子者陷害成功。';
+      ? '五子棋规则：黑先白后，先连五子者胜。每步限时。'
+      : '每月暗中选择动作，同步揭晓。先晋为皇后或多月内综合分高者胜。陷害动作触发随机决斗（五子棋/石头剪刀布/猜大小）。';
   };
 });
 
-// ============== 入口屏 ==============
+function renderClassGrid() {
+  const grid = $('class-grid');
+  if (!META.classes.length) return;
+  grid.innerHTML = '';
+  for (const c of META.classes) {
+    const card = document.createElement('div');
+    card.className = 'class-card' + (c.id === selectedClass ? ' selected' : '');
+    card.innerHTML = `<span class="icon">${c.icon || '🎭'}</span><span class="name">${c.name}</span><span class="desc">${c.description || ''}</span>`;
+    card.onclick = () => {
+      selectedClass = c.id;
+      grid.querySelectorAll('.class-card').forEach((x) => x.classList.remove('selected'));
+      card.classList.add('selected');
+    };
+    grid.appendChild(card);
+  }
+}
+
+// 入口屏按钮
 $('btn-create').onclick = () => {
   const name = ($('name-input').value || '').trim()
     || (selectedMode === 'gomoku' ? '棋手' : '佳人');
-  socket.emit('create_room', { name, mode: selectedMode });
+  socket.emit('create_room', { name, mode: selectedMode, classId: selectedClass });
 };
 $('btn-show-join').onclick = () => {
   $('join-field').style.display = '';
   $('join-btn-row').style.display = '';
-  $('btn-create').parentElement.style.display = 'none';
-  $('btn-show-join').parentElement.style.display = 'none';
+  $('main-btn-row').style.display = 'none';
 };
 $('btn-back').onclick = () => {
   $('join-field').style.display = 'none';
   $('join-btn-row').style.display = 'none';
-  $('btn-create').parentElement.style.display = '';
-  $('btn-show-join').parentElement.style.display = '';
+  $('main-btn-row').style.display = '';
 };
 $('btn-join').onclick = () => {
   const name = ($('name-input').value || '').trim()
     || (selectedMode === 'gomoku' ? '棋手' : '佳人');
   const code = ($('code-input').value || '').trim().toUpperCase();
   if (!code) { showToast('请输入房间号'); return; }
-  socket.emit('join_room', { code, name });
+  socket.emit('join_room', { code, name, classId: selectedClass });
 };
-
-// ============== 大厅屏 ==============
 $('btn-copy').onclick = async () => {
   if (!currentRoomCode) return;
-  try {
-    await navigator.clipboard.writeText(currentRoomCode);
-    showToast('房间号已复制');
-  } catch {
-    showToast('复制失败，请手抄：' + currentRoomCode);
-  }
+  try { await navigator.clipboard.writeText(currentRoomCode); showToast('房间号已复制'); }
+  catch { showToast('复制失败：' + currentRoomCode); }
 };
 
-// ============== 动作按钮渲染 ==============
+// 行动按钮渲染
 function renderActionButtons() {
-  const grid = $('action-grid');
-  grid.innerHTML = '';
+  const grid = $('action-grid'); grid.innerHTML = '';
   const you = lastState && lastState.you;
   const opp = lastState && lastState.opponent;
   for (const def of ACTION_DEFS) {
@@ -542,16 +549,14 @@ function renderActionButtons() {
     btn.className = 'act-btn';
     btn.title = def.tip;
     btn.innerHTML = `<span class="em">${def.em}</span><span class="lbl">${def.label}</span>`;
-
     let disabled = false;
     if (!you || !opp) disabled = true;
     if (lastState && lastState.phase !== 'choosing') disabled = true;
     if (lastState && lastState.youReady) disabled = true;
-
     if (you) {
       if (you.imprisoned > 0 && def.id !== 'defend') disabled = true;
       if (def.id === 'serve' && (you.energy < 25 || you.pregnant > 0)) disabled = true;
-      if ((def.id === 'train_talent' || def.id === 'train_beauty' || def.id === 'build_power') && you.energy < 10) disabled = true;
+      if (['train_talent','train_beauty','build_power'].includes(def.id) && you.energy < 10) disabled = true;
       if (def.id === 'sabotage' && you.energy < 20) disabled = true;
       if (def.id === 'try_child' && (you.favor < 50 || you.pregnant > 0 || you.energy < 30)) disabled = true;
       if (def.id === 'promote') {
@@ -562,10 +567,8 @@ function renderActionButtons() {
         }
       }
     }
-
     btn.disabled = disabled;
     if (myChoice === def.id) btn.classList.add('chosen');
-
     btn.onclick = () => {
       if (btn.disabled) return;
       myChoice = def.id;
@@ -577,19 +580,41 @@ function renderActionButtons() {
 }
 
 function setBar(id, v) {
-  const el = $(id);
-  if (el) el.style.width = Math.max(0, Math.min(100, v)) + '%';
+  const el = $(id); if (el) el.style.width = Math.max(0, Math.min(100, v)) + '%';
+}
+function renderExtras(target, st) {
+  let html = '';
+  if (st.children > 0) {
+    const names = (st.childrenNames || []).join('、');
+    html += `<span class="tag children" title="${names}">子嗣 ×${st.children}${names ? '：' + names : ''}</span>`;
+  }
+  if (st.pregnant > 0) html += `<span class="tag pregnant">怀孕 ${3 - st.pregnant}/3</span>`;
+  if (st.imprisoned > 0) html += `<span class="tag imprisoned">禁足</span>`;
+  if (st.shields && st.shields.sabotage) html += `<span class="tag shield">💍 玉佩</span>`;
+  if (st.shields && st.shields.event)    html += `<span class="tag shield">🔮 龟甲</span>`;
+  if (st.cardsCount && !st.cards) html += `<span class="tag" title="对方手牌张数">🃏 ${st.cardsCount}</span>`;
+  $(target).innerHTML = html || '<span style="opacity:0.5">—</span>';
 }
 
-function renderExtras(target, state) {
-  let html = '';
-  if (state.children > 0) {
-    const names = (state.childrenNames || []).join('、');
-    html += `<span class="tag children" title="${names}">子嗣 ×${state.children}${names ? '：' + names : ''}</span>`;
+function renderHand(you) {
+  const hand = $('hand');
+  hand.innerHTML = '';
+  if (!you || !you.cards || !you.cards.length) {
+    hand.innerHTML = '<div class="empty-hand">尚未持有道具，每月开局有几率获得</div>';
+    return;
   }
-  if (state.pregnant > 0) html += `<span class="tag pregnant">怀孕 ${3 - state.pregnant}/3</span>`;
-  if (state.imprisoned > 0) html += `<span class="tag imprisoned">禁足</span>`;
-  $(target).innerHTML = html || '<span style="opacity:0.5">—</span>';
+  for (const card of you.cards) {
+    const meta = cardDescById[card.id] || {};
+    const div = document.createElement('div');
+    div.className = 'card-item' + (you.usedCardThisMonth ? ' disabled' : '');
+    div.innerHTML = `<div class="ic">${card.icon || meta.icon || '🃏'}</div><div class="nm">${card.name || meta.name || card.id}</div><div class="ds">${meta.description || ''}</div>`;
+    div.onclick = () => {
+      if (you.usedCardThisMonth) { showToast('本月已使用过道具'); return; }
+      if (lastState && lastState.phase !== 'choosing') { showToast('当前阶段不能使用'); return; }
+      socket.emit('use_card', { cardId: card.id });
+    };
+    hand.appendChild(div);
+  }
 }
 
 function renderState(s) {
@@ -597,9 +622,9 @@ function renderState(s) {
   lastState = s;
   $('turn-num').textContent = s.turn;
   $('max-turns').textContent = s.maxTurns;
-
   const tip = $('phase-tip');
   if (s.phase === 'waiting') tip.textContent = '等候对手入宫…';
+  else if (s.phase === 'duel') tip.textContent = '决斗进行中…';
   else if (s.phase === 'ended') tip.textContent = '本局终了';
   else if (s.youReady && !s.opponentReady) tip.textContent = '已抉择，待对手…';
   else if (!s.youReady && s.opponentReady) tip.textContent = '对手已抉择，请速作决断';
@@ -611,6 +636,7 @@ function renderState(s) {
 
   if (s.you) {
     $('you-name').textContent = s.you.name;
+    $('you-cls').textContent = classLabel(s.you.classId);
     $('you-rank').textContent = s.you.rankName;
     $('you-favor').textContent = s.you.favor;
     $('you-power').textContent = s.you.power;
@@ -624,9 +650,11 @@ function renderState(s) {
     setBar('you-rep-bar', s.you.reputation ?? 0);
     setBar('you-energy-bar', s.you.energy);
     renderExtras('you-extras', s.you);
+    renderHand(s.you);
   }
   if (s.opponent) {
     $('op-name').textContent = s.opponent.name;
+    $('op-cls').textContent = classLabel(s.opponent.classId);
     $('op-rank').textContent = s.opponent.rankName;
     $('op-favor').textContent = s.opponent.favor;
     $('op-power').textContent = s.opponent.power;
@@ -644,7 +672,6 @@ function renderState(s) {
     $('op-name').textContent = '虚位以待…';
   }
 
-  // 日志：用 logTotal 比较，修复 6 月后日志被截断后不再刷新的 Bug
   const logEl = $('log');
   const total = s.logTotal ?? (s.log ? s.log.length : 0);
   if (total !== lastLogTotal) {
@@ -663,11 +690,10 @@ function renderState(s) {
     lastLogTotal = total;
   }
 
-  // 结束横幅
   if (s.phase === 'ended') {
     $('end-banner').style.display = '';
     const lastLines = (s.log || []).slice(-2);
-    let winLine = lastLines.find((l) => l.includes('胜出')) || lastLines[lastLines.length - 1] || '';
+    let winLine = lastLines.find((l) => l.includes('胜出')) || '';
     let reason = lastLines.find((l) => l.startsWith('🏁')) || '';
     $('winner-name').textContent = winLine.replace(/^🌟\s*/, '');
     $('end-reason').textContent = reason.replace(/^🏁\s*/, '');
@@ -675,111 +701,272 @@ function renderState(s) {
     $('end-banner').style.display = 'none';
   }
 
-  // 新回合开始时清掉本地选择高亮
-  if (s.phase === 'choosing' && !s.youReady) {
-    myChoice = null;
-  }
-
+  if (s.phase === 'choosing' && !s.youReady) myChoice = null;
   renderActionButtons();
+
+  // 决斗浮层
+  if (s.duel && s.phase === 'duel') {
+    showDuelOverlay(s.duel);
+  } else {
+    hideDuelOverlay();
+  }
 }
 
-// ============== 五子棋棋盘绘制 ==============
+function classLabel(id) {
+  if (!id || id === 'default') return '良家';
+  const c = (META.classes || []).find((x) => x.id === id);
+  return c ? c.icon + c.name : id;
+}
+
+// ============== 五子棋独立模式 ==============
+function renderGomokuStandalone(s) {
+  $('g-you-name').textContent = (s.you && s.you.name) || '你';
+  $('g-op-name').textContent = (s.opponent && s.opponent.name) || '对手';
+  const myColor = s.duel && s.duel.yourColor;
+  $('g-you-color').textContent = myColor === 1 ? '执黑' : (myColor === 2 ? '执白' : '—');
+  $('g-op-color').textContent = myColor === 1 ? '执白' : (myColor === 2 ? '执黑' : '—');
+  $('g-you-score').textContent = (s.you && s.you.score) || 0;
+  $('g-op-score').textContent = (s.opponent && s.opponent.score) || 0;
+
+  const tip = $('g-phase-tip');
+  if (!s.youHaveOpponent) tip.textContent = '等候对手…';
+  else if (s.phase === 'ended') tip.textContent = '本局已终';
+  else if (s.duel && s.duel.yourTurn) tip.textContent = '轮到你';
+  else tip.textContent = '对手思考中…';
+
+  if (s.duel) {
+    const d = s.duel;
+    const cur = d.yourTurn ? d.yourColor : (d.yourColor === 1 ? 2 : 1);
+    $('g-cur-stone').className = 'stone-icon ' + (cur === 1 ? 'black' : 'white');
+    $('g-cur-name').textContent = d.yourTurn ? '轮到你' : '对手思考';
+    drawBoard('g-canvas', d, { canPlay: !d.winner && d.yourTurn });
+    if (d.deadline) startTimer(d.deadline, 'g-timer');
+  }
+
+  const logEl = $('g-log');
+  const total = s.logTotal ?? 0;
+  if (total !== lastGLogTotal) {
+    logEl.innerHTML = (s.log || []).map((l) => `<div>${l}</div>`).join('');
+    logEl.scrollTop = logEl.scrollHeight;
+    lastGLogTotal = total;
+  }
+
+  if (s.phase === 'ended') {
+    $('g-end-banner').style.display = '';
+    const w = s.duel && s.duel.winner;
+    let text = '';
+    if (w === -1) text = '和 局';
+    else if (w === 0 || w === 1) {
+      const winner = (s.you && s.you.score >= (s.opponent.score || 0)) ? s.you : s.opponent;
+      text = (winner.name || '') + ' 胜';
+    }
+    $('g-winner-name').textContent = text;
+    if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+  } else {
+    $('g-end-banner').style.display = 'none';
+  }
+}
+
+// ============== 通用决斗浮层 ==============
+function showDuelOverlay(d) {
+  const ov = $('duel-overlay');
+  ov.style.display = '';
+  const panel = ov.querySelector('.duel-panel');
+  // 五子棋决斗时给 panel 加 fullscreen 类，让棋盘铺满
+  panel.classList.toggle('fullscreen', d.duelId === 'gomoku');
+  const banner = $('duel-banner');
+  if (d.duelKind === 'sabotage') {
+    banner.textContent = `⚔️ 棋决胜负 · ${d.duelName} ⚔️`;
+  } else {
+    banner.textContent = `${d.duelIcon || '⚔️'} ${d.duelName}`;
+  }
+  $('duel-info-left').innerHTML = d.yourTurn ? '<b style="color:#ffd278;">轮到你</b>' : '对手思考中…';
+  if (d.deadline) startTimer(d.deadline, 'duel-timer');
+
+  const content = $('duel-content');
+  const hint = $('duel-hint');
+  if (d.duelId === 'gomoku') {
+    content.innerHTML = `<canvas id="d-canvas" class="board-canvas"></canvas>`;
+    drawBoard('d-canvas', d, { canPlay: !d.winner && d.yourTurn });
+    hint.innerHTML = '连五子者陷害成功；超时即判负';
+  } else if (d.duelId === 'rps') {
+    renderRpsUI(content, d);
+    hint.innerHTML = `三局两胜（已 ${d.score.you || 0}:${d.score.opponent || 0}）。同时出招同步揭晓。`;
+  } else if (d.duelId === 'guess') {
+    renderGuessUI(content, d);
+    hint.innerHTML = `三局两胜（已 ${d.score.you || 0}:${d.score.opponent || 0}）。暗选 1-100，大者胜，平局重选。`;
+  }
+}
+
+function hideDuelOverlay() {
+  $('duel-overlay').style.display = 'none';
+  if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+}
+
+function renderRpsUI(container, d) {
+  const choices = [
+    { id: 'rock',     em: '✊', name: '石头' },
+    { id: 'paper',    em: '✋', name: '布' },
+    { id: 'scissors', em: '✌️', name: '剪刀' },
+  ];
+  const score = d.score || { you: 0, opponent: 0 };
+  let html = `<div class="duel-score"><span class="me">你 ${score.you}</span><span class="op">对手 ${score.opponent}</span></div>`;
+  if (d.rounds && d.rounds.length) {
+    html += '<div class="rps-rounds">';
+    for (let i = 0; i < d.rounds.length; i++) {
+      const r = d.rounds[i];
+      const aIc = iconOfRps(r.a), bIc = iconOfRps(r.b);
+      html += `<div class="rps-round">第${i+1}局 ${aIc} vs ${bIc}</div>`;
+    }
+    html += '</div>';
+  }
+  html += '<div class="rps-row">';
+  for (const c of choices) {
+    const dis = d.yourPending || d.winner !== null;
+    html += `<button class="rps-btn" data-choice="${c.id}" ${dis ? 'disabled' : ''}>${c.em}<span class="nm">${c.name}</span></button>`;
+  }
+  html += '</div>';
+  if (d.yourPending) {
+    html += `<p style="text-align:center; color:var(--ink-soft);">已选 ${iconOfRps(d.yourPending)}，等候对手…</p>`;
+  }
+  container.innerHTML = html;
+  container.querySelectorAll('.rps-btn').forEach((btn) => {
+    btn.onclick = () => {
+      socket.emit('duel_action', { choice: btn.dataset.choice });
+      playSound('click');
+    };
+  });
+}
+
+function iconOfRps(c) {
+  if (c === 'rock') return '✊';
+  if (c === 'paper') return '✋';
+  if (c === 'scissors') return '✌️';
+  if (c === 'timeout') return '⏱️';
+  return '？';
+}
+
+function renderGuessUI(container, d) {
+  const score = d.score || { you: 0, opponent: 0 };
+  let html = `<div class="duel-score"><span class="me">你 ${score.you}</span><span class="op">对手 ${score.opponent}</span></div>`;
+  if (d.rounds && d.rounds.length) {
+    html += '<div class="rps-rounds">';
+    for (let i = 0; i < d.rounds.length; i++) {
+      const r = d.rounds[i];
+      html += `<div class="rps-round">第${i+1}局 ${r.a} vs ${r.b}${r.winner === -1 ? ' 平' : (r.winner === 0 ? ' (攻方胜)' : ' (守方胜)')}</div>`;
+    }
+    html += '</div>';
+  }
+  if (d.yourPending) {
+    html += `<p style="text-align:center; color:var(--ink-soft); font-size:18px;">已暗选 <b>${d.yourPending}</b>，等候对手…</p>`;
+  } else if (d.winner === null) {
+    html += `
+      <div class="guess-input">
+        <input id="d-guess-num" type="number" min="1" max="100" placeholder="1-100" inputmode="numeric" />
+        <button class="primary" id="d-guess-submit">出 招</button>
+      </div>
+      <div class="guess-quick">
+        <button data-n="1">1</button>
+        <button data-n="20">20</button>
+        <button data-n="50">50</button>
+        <button data-n="80">80</button>
+        <button data-n="100">100</button>
+      </div>
+      <p style="text-align:center; color:var(--ink-soft); font-size:12px; margin-top:8px;">点快捷或自定义数字（1-100），同步揭晓比大</p>
+    `;
+  }
+  container.innerHTML = html;
+  const submit = $('d-guess-submit');
+  if (submit) {
+    submit.onclick = () => {
+      const n = parseInt($('d-guess-num').value, 10);
+      if (!Number.isInteger(n) || n < 1 || n > 100) { showToast('请输入 1-100 整数'); return; }
+      socket.emit('duel_action', { num: n });
+      playSound('click');
+    };
+    container.querySelectorAll('.guess-quick button').forEach((btn) => {
+      btn.onclick = () => {
+        socket.emit('duel_action', { num: parseInt(btn.dataset.n, 10) });
+        playSound('click');
+      };
+    });
+    const inp = $('d-guess-num');
+    inp.focus();
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit.click(); });
+  }
+}
+
+// ============== 五子棋画布 ==============
 function drawBoard(canvasId, sub, opts) {
   opts = opts || {};
   const canvas = $(canvasId);
   if (!canvas) return;
   const board = sub.board;
   const N = board.length;
-  // 维持 1:1，按容器宽度
-  const cssW = canvas.clientWidth || 320;
+  // 取 canvas 实际宽度，但也限制在父容器高度内（保正方）
+  const parent = canvas.parentElement;
+  const fullscreen = canvas.closest('.duel-panel.fullscreen');
+  let cssW;
+  if (fullscreen) {
+    // 全屏决斗：用容器宽度和可用高度的较小值，保持正方
+    const availH = (parent && parent.clientHeight) || window.innerHeight;
+    const availW = (parent && parent.clientWidth) || window.innerWidth;
+    // 减去棋盘上面/下面其他元素占的空间（约 160px）
+    const usableH = Math.max(280, window.innerHeight - 220);
+    cssW = Math.min(availW, usableH);
+  } else {
+    cssW = Math.min(canvas.clientWidth || 320, 560);
+  }
   const dpr = window.devicePixelRatio || 1;
   canvas.width = cssW * dpr;
   canvas.height = cssW * dpr;
+  canvas.style.width = cssW + 'px';
   canvas.style.height = cssW + 'px';
   const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssW, cssW);
-
   // 背景
   const grad = ctx.createLinearGradient(0, 0, cssW, cssW);
   grad.addColorStop(0, '#dbb67a'); grad.addColorStop(1, '#c39855');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, cssW, cssW);
-
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, cssW, cssW);
   const margin = cssW * 0.05;
   const grid = (cssW - margin * 2) / (N - 1);
-
-  // 网格线
-  ctx.strokeStyle = '#3b1f0f';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#3b1f0f'; ctx.lineWidth = 1;
   for (let i = 0; i < N; i++) {
-    ctx.beginPath();
-    ctx.moveTo(margin, margin + i * grid);
-    ctx.lineTo(cssW - margin, margin + i * grid);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(margin + i * grid, margin);
-    ctx.lineTo(margin + i * grid, cssW - margin);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(margin, margin + i * grid); ctx.lineTo(cssW - margin, margin + i * grid); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(margin + i * grid, margin); ctx.lineTo(margin + i * grid, cssW - margin); ctx.stroke();
   }
-  // 星位（仅 N>=9）
   if (N >= 9) {
-    const stars = N === 9
-      ? [[2,2],[2,6],[6,2],[6,6],[4,4]]
+    const stars = N === 9 ? [[2,2],[2,6],[6,2],[6,6],[4,4]]
       : [[3,3],[3,N-4],[N-4,3],[N-4,N-4],[Math.floor((N-1)/2), Math.floor((N-1)/2)]];
     ctx.fillStyle = '#3b1f0f';
-    for (const [r, c] of stars) {
-      ctx.beginPath();
-      ctx.arc(margin + c * grid, margin + r * grid, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    for (const [r, c] of stars) { ctx.beginPath(); ctx.arc(margin + c * grid, margin + r * grid, 2.5, 0, Math.PI * 2); ctx.fill(); }
   }
-
-  // 棋子
   for (let r = 0; r < N; r++) {
     for (let c = 0; c < N; c++) {
       if (board[r][c] === 0) continue;
-      const x = margin + c * grid;
-      const y = margin + r * grid;
-      const radius = grid * 0.42;
+      const x = margin + c * grid, y = margin + r * grid, radius = grid * 0.42;
       const isLast = sub.lastMove && sub.lastMove.row === r && sub.lastMove.col === c;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      if (board[r][c] === 1) {
-        const g = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 1, x, y, radius);
-        g.addColorStop(0, '#555'); g.addColorStop(1, '#0a0a0a');
-        ctx.fillStyle = g;
-      } else {
-        const g = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 1, x, y, radius);
-        g.addColorStop(0, '#fff'); g.addColorStop(1, '#cfcfc8');
-        ctx.fillStyle = g;
-      }
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 0.6;
-      ctx.stroke();
-      // 最后一手红圈
+      ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2);
+      const g = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 1, x, y, radius);
+      if (board[r][c] === 1) { g.addColorStop(0, '#555'); g.addColorStop(1, '#0a0a0a'); }
+      else                   { g.addColorStop(0, '#fff'); g.addColorStop(1, '#cfcfc8'); }
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 0.6; ctx.stroke();
       if (isLast) {
-        ctx.beginPath();
-        ctx.arc(x, y, radius * 0.3, 0, Math.PI * 2);
-        ctx.strokeStyle = '#ff4444';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, radius * 0.3, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2; ctx.stroke();
       }
     }
   }
-
-  // 落子事件
   canvas.onclick = (ev) => {
     if (!opts.canPlay) return;
     const rect = canvas.getBoundingClientRect();
-    const cx = ev.clientX - rect.left;
-    const cy = ev.clientY - rect.top;
-    const c = Math.round((cx - margin) / grid);
-    const r = Math.round((cy - margin) / grid);
+    const cx = ev.clientX - rect.left, cy = ev.clientY - rect.top;
+    const c = Math.round((cx - margin) / grid), r = Math.round((cy - margin) / grid);
     if (r < 0 || r >= N || c < 0 || c >= N) return;
     if (board[r][c] !== 0) { showToast('此处已有棋子'); return; }
-    socket.emit('place_stone', { row: r, col: c });
+    socket.emit('duel_action', { row: r, col: c });
     playSound('place');
   };
 }
@@ -790,37 +977,35 @@ function startTimer(deadline, elId) {
     const el = $(elId);
     if (!el || !deadline) return;
     const remain = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
-    el.textContent = remain + ' s';
-    if (remain <= 5) el.style.color = '#ff7e7e'; else el.style.color = '#ffd278';
+    el.textContent = remain + 's';
+    el.style.color = remain <= 5 ? '#ff7e7e' : '#ffd278';
   };
   tick();
   timerHandle = setInterval(tick, 500);
 }
 
-// ============== 简易音效（落子声 / 晋升声） ==============
-const sounds = {};
 function playSound(kind) {
   try {
     const ctx = playSound._ctx || (playSound._ctx = new (window.AudioContext || window.webkitAudioContext)());
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    if (kind === 'place') {
-      o.frequency.value = 880; o.type = 'square';
-      g.gain.setValueAtTime(0.1, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-      o.start(); o.stop(ctx.currentTime + 0.1);
+    if (kind === 'place' || kind === 'click') {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = kind === 'place' ? 880 : 660; o.type = 'square';
+      g.gain.setValueAtTime(0.08, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+      o.start(); o.stop(ctx.currentTime + 0.08);
     } else if (kind === 'win') {
       [523, 659, 784, 1047].forEach((f, i) => {
-        const oo = ctx.createOscillator(); const gg = ctx.createGain();
-        oo.connect(gg); gg.connect(ctx.destination);
-        oo.frequency.value = f; oo.type = 'triangle';
-        gg.gain.setValueAtTime(0.08, ctx.currentTime + i * 0.1);
-        gg.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.18);
-        oo.start(ctx.currentTime + i * 0.1);
-        oo.stop(ctx.currentTime + i * 0.1 + 0.2);
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = f; o.type = 'triangle';
+        g.gain.setValueAtTime(0.08, ctx.currentTime + i * 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.18);
+        o.start(ctx.currentTime + i * 0.1); o.stop(ctx.currentTime + i * 0.1 + 0.2);
       });
     } else if (kind === 'event') {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
       o.frequency.value = 660; o.type = 'sine';
       g.gain.setValueAtTime(0.06, ctx.currentTime);
       g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
@@ -829,107 +1014,30 @@ function playSound(kind) {
   } catch (_) {}
 }
 
-// ============== 五子棋独立模式渲染 ==============
-function renderGomokuStandalone(s) {
-  $('g-you-name').textContent = (s.you && s.you.name) || '你';
-  $('g-op-name').textContent = (s.opponent && s.opponent.name) || '对手';
-  $('g-you-color').textContent = s.you && s.you.color === 1 ? '执黑' : (s.you && s.you.color === 2 ? '执白' : '—');
-  $('g-op-color').textContent = s.opponent && s.opponent.color === 1 ? '执黑' : (s.opponent && s.opponent.color === 2 ? '执白' : '—');
-  $('g-you-score').textContent = (s.you && s.you.score) || 0;
-  $('g-op-score').textContent = (s.opponent && s.opponent.score) || 0;
-
-  const tip = $('g-phase-tip');
-  if (!s.youHaveOpponent) tip.textContent = '等候对手…';
-  else if (s.phase === 'ended') tip.textContent = '本局已终';
-  else if (s.gomoku && s.gomoku.yourTurn) tip.textContent = '轮到你了';
-  else tip.textContent = '对手思考中…';
-
-  if (s.gomoku) {
-    const cur = s.gomoku.current;
-    $('g-cur-stone').className = 'stone-icon ' + (cur === 1 ? 'black' : 'white');
-    const curName = cur === s.you.color ? (s.you && s.you.name) : (s.opponent && s.opponent.name);
-    $('g-cur-name').textContent = '轮到 ' + (curName || '');
-    drawBoard('g-canvas', s.gomoku, { canPlay: !s.gomoku.winner && s.gomoku.yourTurn });
-    if (s.gomoku.deadline && s.phase === 'duel') startTimer(s.gomoku.deadline, 'g-timer');
-  }
-
-  // 棋谱日志
-  const logEl = $('g-log');
-  const total = s.logTotal ?? 0;
-  if (total !== lastGLogTotal) {
-    logEl.innerHTML = (s.log || []).map((line) => `<div>${line}</div>`).join('');
-    logEl.scrollTop = logEl.scrollHeight;
-    lastGLogTotal = total;
-  }
-
-  if (s.phase === 'ended') {
-    $('g-end-banner').style.display = '';
-    const w = s.gomoku && s.gomoku.winner;
-    let text = '';
-    if (w === 'draw') text = '和 局';
-    else if (w === s.you.color) text = (s.you.name || '你') + ' 胜';
-    else if (w) text = (s.opponent.name || '对手') + ' 胜';
-    else text = '局终';
-    $('g-winner-name').textContent = text;
-    if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
-    if (w === s.you.color) playSound('win');
-  } else {
-    $('g-end-banner').style.display = 'none';
-  }
-}
-
 // ============== Socket 事件 ==============
 socket.on('joined', ({ code, role, mode }) => {
   currentRoomCode = code;
   $('room-code').textContent = code;
-  if (role === 'host') {
-    showScreen('lobby');
-  } else {
-    showScreen(mode === 'gomoku' ? 'gomoku' : 'game');
-  }
+  if (role === 'host') showScreen('lobby');
+  else showScreen(mode === 'gomoku' ? 'gomoku' : 'game');
 });
 
 socket.on('state', (s) => {
   if (s.youHaveOpponent) {
-    if (s.mode === 'gomoku') {
-      showScreen('gomoku');
-      renderGomokuStandalone(s);
-      return;
-    }
+    if (s.mode === 'gomoku') { showScreen('gomoku'); renderGomokuStandalone(s); return; }
     showScreen('game');
   }
   renderState(s);
-
-  // 陷害决斗浮层
-  if (s.mode === 'palace' && s.gomoku && s.gomoku.duel === 'sabotage') {
-    $('duel-overlay').style.display = '';
-    const cur = s.gomoku.current;
-    $('d-cur-stone').className = 'stone-icon ' + (cur === 1 ? 'black' : 'white');
-    const me = s.you;
-    const op = s.opponent;
-    let curName = cur === (me && me.rank !== undefined ? null : null) ? null : null;
-    // 直接用 yourTurn 判定显示
-    $('d-cur-name').textContent = s.gomoku.yourTurn ? '轮到你了' : '对手思考中';
-    drawBoard('d-canvas', s.gomoku, { canPlay: !s.gomoku.winner && s.gomoku.yourTurn });
-    if (s.gomoku.deadline) startTimer(s.gomoku.deadline, 'd-timer');
-  } else {
-    $('duel-overlay').style.display = 'none';
-  }
 });
 
 socket.on('error_msg', (msg) => showToast(msg));
-
-socket.on('disconnect', () => showToast('连接已断开，请刷新重试'));
+socket.on('disconnect', () => showToast('连接断开，请刷新重试'));
 
 $('btn-rematch').onclick = () => {
-  myChoice = null;
-  lastLogTotal = -1;
-  socket.emit('rematch');
+  myChoice = null; lastLogTotal = -1;
+  socket.emit('rematch', { classId: selectedClass });
 };
-$('g-btn-rematch').onclick = () => {
-  lastGLogTotal = -1;
-  socket.emit('rematch');
-};
+$('g-btn-rematch').onclick = () => { lastGLogTotal = -1; socket.emit('rematch'); };
 </script>
 </body>
 </html>

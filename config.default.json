@@ -1,14 +1,11 @@
 {
-  "_comment": "默认配置。运行时会复制到 config.json，admin 后台修改的是 config.json。删除 config.json 即恢复默认。",
-
+  "_comment": "后宫风云配置文件。修改 config.default.json 改默认值（入 git），管理后台改 config.json（不入 git）。",
   "adminToken": "CHANGE_ME_NOW",
-
   "appellation": {
     "emperor": "圣上",
     "dynasty": "大启王朝",
     "concubineLabel": "佳人"
   },
-
   "palace": {
     "maxTurns": 15,
     "energyRegen": 8,
@@ -26,14 +23,104 @@
       { "favor": 80, "power": 80, "rep": 70, "children": 1 }
     ],
     "childNames": [
-      "皓宁", "琰宁", "瑞宁", "嘉柔", "婉清", "鸿煊", "瑞泽",
-      "炳辰", "韶华", "静姝", "清月", "怀瑾", "永琪", "弘历"
+      "永宁","承宁","昭宁","和煦","明轩","靖瑶","承泽","婉宁",
+      "瑞祥","清欢","明珠","怡安","乐康","泽兰","清辞"
     ]
   },
-
   "gomoku": {
     "boardSize": 9,
-    "moveTimeoutSec": 25,
+    "moveTimeoutSec": 60,
     "sabotageDuel": true
+  },
+  "duels": {
+    "_comment": "陷害判定决斗池：每次设陷害随机抽一种",
+    "enabled": ["gomoku", "rps", "guess"],
+    "rpsTimeoutSec": 15,
+    "guessTimeoutSec": 15
+  },
+  "classes": {
+    "_comment": "角色职业。建房时双方各选一个，不可重复也允许重复（看双方默契）。",
+    "enabled": ["talent", "seductress", "schemer", "noble", "healer", "default"],
+    "default": {
+      "id": "default", "name": "良家", "icon": "🌸",
+      "description": "无加成的平衡型，适合新手"
+    },
+    "talent": {
+      "id": "talent", "name": "才女", "icon": "📚",
+      "description": "习才艺/修容貌额外+3，但侍寝-3",
+      "trainBonus": 3, "serveBonus": -3
+    },
+    "seductress": {
+      "id": "seductress", "name": "妖姬", "icon": "💋",
+      "description": "侍寝效果翻倍，但每月名望 -1",
+      "serveMultiplier": 2, "monthlyRepLoss": 1
+    },
+    "schemer": {
+      "id": "schemer", "name": "心机", "icon": "🦂",
+      "description": "陷害命中率大增（攻击+15），但初始名望-10",
+      "sabotageAtkBonus": 15, "initRepDelta": -10
+    },
+    "noble": {
+      "id": "noble", "name": "嫡女", "icon": "👑",
+      "description": "出身贵族，初始势力+20、名望+10，但圣宠-10",
+      "initPowerDelta": 20, "initRepDelta": 10, "initFavorDelta": -10
+    },
+    "healer": {
+      "id": "healer", "name": "神医", "icon": "🌿",
+      "description": "自保多回 10 体力，求子嗣命中率 +15%",
+      "defendEnergyBonus": 10, "tryChildBonus": 15
+    }
+  },
+  "cards": {
+    "_comment": "道具卡牌。每月有 dropChance% 几率掉 1 张（手牌满 maxHand 时不再掉）。每月限用 1 张主动卡。",
+    "enabled": true,
+    "dropChance": 30,
+    "maxHand": 3,
+    "list": [
+      {
+        "id": "poison_tea", "name": "鸩茶", "icon": "🍵",
+        "description": "立即让对方圣宠 -10（必中）",
+        "type": "active", "effect": "favor_damage", "value": 10
+      },
+      {
+        "id": "queen_gift", "name": "太后赏赐", "icon": "🎀",
+        "description": "立即自己圣宠 +15、名望 +5",
+        "type": "active", "effect": "self_buff",
+        "favor": 15, "rep": 5
+      },
+      {
+        "id": "red_velvet", "name": "红绒花", "icon": "🌹",
+        "description": "立即自己美貌 +12、才艺 +5",
+        "type": "active", "effect": "self_buff",
+        "beauty": 12, "talent": 5
+      },
+      {
+        "id": "fenglinling", "name": "凤翎令", "icon": "🪶",
+        "description": "立即自己势力 +18",
+        "type": "active", "effect": "self_buff",
+        "power": 18
+      },
+      {
+        "id": "gu_poison", "name": "蛊毒", "icon": "🦋",
+        "description": "下月对方体力 -25（不可叠加）",
+        "type": "active", "effect": "opp_debuff",
+        "energy_next": 25
+      },
+      {
+        "id": "jade_pendant", "name": "玉佩", "icon": "💍",
+        "description": "被动：第一次被陷害命中时自动免疫并消耗",
+        "type": "passive", "effect": "shield_sabotage"
+      },
+      {
+        "id": "secret_letter", "name": "密信", "icon": "📜",
+        "description": "立即揭示对方上月所选动作",
+        "type": "active", "effect": "reveal_last"
+      },
+      {
+        "id": "tortoise_charm", "name": "龟甲符", "icon": "🔮",
+        "description": "下月免疫一切负面随机事件",
+        "type": "active", "effect": "self_shield_event"
+      }
+    ]
   }
 }

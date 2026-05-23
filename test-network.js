@@ -95,7 +95,9 @@ function assertEq(a, b, m) { assert(a === b, `${m} — 预期 ${b}, 实际 ${a}`
   await delay(200);
   assertEq(aState.phase, 'choosing', 'rematch 后回到 choosing');
   assertEq(aState.turn, 1, 'rematch 后 turn=1');
-  assertEq(aState.logTotal, 1, 'rematch 后 logTotal 重置（仅 1 条 "重开" 日志）');
+  // v3.1: 月初可能抽卡，logTotal=1（重开） + 0~2（双方抽卡）
+  assert(aState.logTotal >= 1 && aState.logTotal <= 3,
+    `rematch 后 logTotal 重置 (1-3)，实际 ${aState.logTotal}`);
 
   // 试图求子（初始 favor=30 < 50，必定不合法）
   const beforeErrCount = aErrors.length;

@@ -1,5 +1,5 @@
 #!/bin/bash
-# 后宫风云 v3.0 部署脚本（基于 GitHub）
+# 后宫风云 v3.1 部署脚本（基于 GitHub）
 # 使用：bash deploy.sh
 set -e
 
@@ -10,7 +10,7 @@ PORT="${PORT:-3000}"
 cd "$PROJECT_DIR"
 
 echo "================================"
-echo "  后宫风云 v3.0 部署"
+echo "  后宫风云 v3.1 部署"
 echo "  路径: $PROJECT_DIR"
 echo "================================"
 
@@ -52,6 +52,22 @@ if [ -f test-gomoku.js ]; then
     exit 1
   }
   echo "  -> 五子棋逻辑：通过"
+fi
+if [ -f test-duels.js ]; then
+  node test-duels.js > /tmp/palace-duels.log 2>&1 || {
+    echo "  ✗ 决斗模块测试失败"
+    tail -20 /tmp/palace-duels.log
+    exit 1
+  }
+  echo "  -> 决斗模块（五子棋/RPS/猜大小）：通过"
+fi
+if [ -f test-cards-classes.js ]; then
+  node test-cards-classes.js > /tmp/palace-cards.log 2>&1 || {
+    echo "  ✗ 卡牌+职业测试失败"
+    tail -20 /tmp/palace-cards.log
+    exit 1
+  }
+  echo "  -> 卡牌+职业：通过"
 fi
 
 echo "[5/8] 启动 / 重启 PM2 进程 ..."
