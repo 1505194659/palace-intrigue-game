@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#5b1a1a" />
+<title>后宫风云 · 双人宫斗</title>
+<style>
+  :root {
+    --bg: #f0e2c7;
+    --bg-deep: #e3d0a9;
+    --ink: #2b1810;
+    --ink-soft: #5b3a26;
+    --red: #8b1a1a;
+    --red-deep: #5b1a1a;
+    --gold: #b8862a;
+    --line: #8b6a3d;
+    --shadow: rgba(60, 30, 10, 0.25);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 20% 0%, rgba(139, 26, 26, 0.08), transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(184, 134, 42, 0.12), transparent 50%),
+      var(--bg);
+    background-attachment: fixed;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(139, 106, 61, 0.04) 0 1px, transparent 1px 12px),
+      repeating-linear-gradient(-45deg, rgba(139, 106, 61, 0.04) 0 1px, transparent 1px 12px);
+    z-index: 0;
+  }
+  #app { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 16px 14px 28px; min-height: 100%; }
+
+  h1.title {
+    text-align: center; font-size: 30px; letter-spacing: 0.4em; margin: 18px 0 4px;
+    color: var(--red-deep); text-shadow: 0 2px 0 rgba(139, 106, 61, 0.2);
+  }
+  .subtitle { text-align: center; color: var(--ink-soft); font-size: 13px; letter-spacing: 0.3em; margin-bottom: 22px; }
+
+  .panel {
+    background: linear-gradient(180deg, #f7ecd1, #ead7b2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    padding: 16px 14px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .panel::before, .panel::after {
+    content: ""; position: absolute; width: 14px; height: 14px;
+    border: 1px solid var(--gold); pointer-events: none;
+  }
+  .panel::before { top: 4px; left: 4px; border-right: none; border-bottom: none; }
+  .panel::after { bottom: 4px; right: 4px; border-left: none; border-top: none; }
+
+  /* 入口屏 */
+  .entry .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+  input[type="text"] {
+    width: 100%; padding: 12px 14px; font-size: 16px; font-family: inherit;
+    border: 1px solid var(--line); border-radius: 4px;
+    background: #fff8e7; color: var(--ink);
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--red); box-shadow: 0 0 0 2px rgba(139, 26, 26, 0.15); }
+  label.field { display: block; margin-bottom: 12px; }
+  label.field span { font-size: 13px; color: var(--ink-soft); margin-bottom: 6px; display: inline-block; }
+
+  button.primary, button.ghost {
+    flex: 1; padding: 13px 10px; font-size: 15px; font-family: inherit; cursor: pointer;
+    border-radius: 4px; transition: transform 0.05s ease, box-shadow 0.15s ease;
+    letter-spacing: 0.15em;
+  }
+  button.primary {
+    background: linear-gradient(180deg, var(--red), var(--red-deep));
+    color: #fbe9c2; border: 1px solid var(--red-deep);
+    box-shadow: 0 2px 0 #3b0d0d;
+  }
+  button.primary:active { transform: translateY(1px); box-shadow: 0 1px 0 #3b0d0d; }
+  button.ghost {
+    background: #fff8e7; color: var(--red-deep); border: 1px solid var(--line);
+    box-shadow: 0 2px 0 rgba(139, 106, 61, 0.4);
+  }
+  button.ghost:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .room-code {
+    text-align: center; font-size: 28px; letter-spacing: 0.5em;
+    color: var(--red-deep); font-weight: bold; padding: 10px;
+    background: #fff8e7; border: 2px dashed var(--line); border-radius: 4px;
+    margin: 8px 0 12px;
+  }
+
+  /* 游戏屏 */
+  .turn-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; margin-bottom: 12px;
+    background: linear-gradient(180deg, #5b1a1a, #3b0d0d);
+    color: #fbe9c2; border-radius: 4px;
+    font-size: 14px; letter-spacing: 0.15em;
+  }
+  .turn-bar .turn-num { font-size: 18px; font-weight: bold; color: #ffd278; }
+
+  .players { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pcard {
+    background: linear-gradient(180deg, #f7ecd1, #ead7b2);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px 10px 8px; position: relative;
+    box-shadow: 0 2px 6px var(--shadow);
+  }
+  .pcard.you { border-color: var(--red); }
+  .pcard h3 {
+    margin: 0 0 6px; font-size: 14px; letter-spacing: 0.2em; color: var(--red-deep);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .pcard h3 .who { font-size: 11px; color: var(--ink-soft); letter-spacing: 0.1em; }
+  .rank-badge {
+    display: inline-block; padding: 3px 8px; border-radius: 2px;
+    background: linear-gradient(180deg, var(--gold), #8c6a1f);
+    color: #fff8e7; font-size: 12px; letter-spacing: 0.15em;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  }
+  .stat { font-size: 12px; margin: 4px 0; color: var(--ink); }
+  .stat .lbl { display: inline-block; width: 38px; color: var(--ink-soft); }
+  .bar { display: inline-block; vertical-align: middle; width: calc(100% - 78px); height: 8px; background: #d8c393; border: 1px solid var(--line); border-radius: 2px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--red), var(--gold)); transition: width 0.4s; }
+  .bar.fav > span { background: linear-gradient(90deg, #d2467d, #ff7eb3); }
+  .bar.pow > span { background: linear-gradient(90deg, #2e6b9c, #5fa8d3); }
+  .bar.rep > span { background: linear-gradient(90deg, #8b6a3d, #d4a64a); }
+  .bar.energy > span { background: linear-gradient(90deg, #5a8c3a, #b1d96e); }
+  .bar .num { position: absolute; }
+  .stat .v { float: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .extras { font-size: 11px; color: var(--ink-soft); margin-top: 6px; min-height: 16px; }
+  .extras .tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--line); border-radius: 2px; margin-right: 4px; background: #fff8e7; }
+  .extras .tag.pregnant { color: #b73977; border-color: #b73977; }
+  .extras .tag.imprisoned { color: #6b1a1a; border-color: #6b1a1a; }
+  .extras .tag.children { color: var(--gold); border-color: var(--gold); }
+
+  .actions {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    margin: 12px 0;
+  }
+  .act-btn {
+    padding: 10px 4px; font-size: 13px; font-family: inherit; cursor: pointer;
+    background: linear-gradient(180deg, #fff8e7, #ecd9b3);
+    color: var(--ink); border: 1px solid var(--line);
+    border-radius: 4px; min-height: 56px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    line-height: 1.3;
+    box-shadow: 0 2px 0 rgba(139, 106, 61, 0.4);
+    transition: transform 0.05s ease;
+  }
+  .act-btn:active:not(:disabled) { transform: translateY(1px); }
+  .act-btn .em { font-size: 18px; margin-bottom: 2px; }
+  .act-btn .lbl { font-size: 12px; letter-spacing: 0.1em; }
+  .act-btn:disabled { opacity: 0.4; }
+  .act-btn.chosen {
+    background: linear-gradient(180deg, var(--red), var(--red-deep));
+    color: #fbe9c2; border-color: var(--red-deep);
+  }
+
+  .ready-row { display: flex; justify-content: space-around; font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+  .ready-row .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c9b07a; margin-right: 5px; vertical-align: middle; }
+  .ready-row .dot.ok { background: #5a8c3a; box-shadow: 0 0 4px #5a8c3a; }
+
+  .log {
+    background: #fff8e7; border: 1px solid var(--line); border-radius: 4px;
+    padding: 10px 12px; max-height: 220px; overflow-y: auto;
+    font-size: 13px; line-height: 1.7; color: var(--ink);
+    box-shadow: inset 0 0 8px rgba(139, 106, 61, 0.1);
+  }
+  .log .turn-divider { color: var(--red-deep); font-weight: bold; margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 6px; }
+
+  .end-banner {
+    text-align: center; padding: 18px; border: 2px solid var(--red-deep);
+    background: linear-gradient(180deg, #fff8e7, #f0d9aa); border-radius: 6px;
+    margin: 14px 0;
+  }
+  .end-banner h2 { margin: 0 0 6px; color: var(--red-deep); letter-spacing: 0.3em; }
+  .end-banner .winner { font-size: 22px; color: var(--gold); font-weight: bold; margin: 8px 0; letter-spacing: 0.2em; }
+  .end-banner .reason { color: var(--ink-soft); font-size: 13px; }
+
+  .toast {
+    position: fixed; left: 50%; top: 18%; transform: translateX(-50%);
+    background: rgba(43, 24, 16, 0.92); color: #fbe9c2;
+    padding: 10px 18px; border-radius: 4px; font-size: 14px;
+    pointer-events: none; opacity: 0; transition: opacity 0.25s;
+    z-index: 100; max-width: 80%;
+  }
+  .toast.show { opacity: 1; }
+
+  .hint { font-size: 12px; color: var(--ink-soft); margin-top: 8px; line-height: 1.6; }
+  .hint code { background: rgba(139, 26, 26, 0.08); padding: 1px 4px; border-radius: 2px; }
+
+  /* 极小屏适配（窄手机） */
+  @media (max-width: 360px) {
+    h1.title { font-size: 24px; }
+    .actions { grid-template-columns: repeat(3, 1fr); }
+    .pcard h3 { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <h1 class="title">后&nbsp;宫&nbsp;风&nbsp;云</h1>
+  <div class="subtitle">— 双 人 联 机 宫 斗 —</div>
+
+  <!-- 入口屏 -->
+  <section class="panel entry" id="screen-entry">
+    <label class="field">
+      <span>入宫芳名</span>
+      <input id="name-input" type="text" maxlength="8" placeholder="例：婉嫔" />
+    </label>
+    <label class="field" id="join-field" style="display:none">
+      <span>房间号（5 位字母数字）</span>
+      <input id="code-input" type="text" maxlength="5" placeholder="例：A7K3M" autocapitalize="characters" />
+    </label>
+    <div class="btn-row">
+      <button class="primary" id="btn-create">开 局 创 房</button>
+      <button class="ghost" id="btn-show-join">输 码 加 入</button>
+    </div>
+    <div class="btn-row" id="join-btn-row" style="display:none">
+      <button class="ghost" id="btn-back">返 回</button>
+      <button class="primary" id="btn-join">入 房</button>
+    </div>
+    <p class="hint">游戏规则：每月双方暗中选择一项动作，同步揭晓结算。先晋为皇后，或十五月内综合分高者胜。综合分 = 位分×100 + 圣宠 + 势力 + 名望 + 子嗣×50。</p>
+  </section>
+
+  <!-- 等待对手 -->
+  <section class="panel" id="screen-lobby" style="display:none">
+    <h3 style="margin:0 0 8px; color: var(--red-deep); letter-spacing: 0.2em;">候 驾 中</h3>
+    <div class="room-code" id="room-code">-----</div>
+    <p class="hint">将房间号告诉对手，让她在另一台手机/浏览器上选择"输码加入"输入此号即可。也可以直接复制本页地址给她，让她在同一域名下加入。</p>
+    <button class="ghost" id="btn-copy" style="width:100%; margin-top: 6px;">复 制 房 间 号</button>
+  </section>
+
+  <!-- 游戏屏 -->
+  <section id="screen-game" style="display:none">
+    <div class="turn-bar">
+      <span>第 <span class="turn-num" id="turn-num">1</span> 月 / 共 <span id="max-turns">10</span> 月</span>
+      <span id="phase-tip">请选择本月动作</span>
+    </div>
+
+    <div class="players">
+      <div class="pcard you">
+        <h3><span id="you-name">你</span><span class="who">本宫</span></h3>
+        <div style="margin-bottom:6px"><span class="rank-badge" id="you-rank">答应</span></div>
+        <div class="stat"><span class="lbl">圣宠</span><span class="bar fav"><span id="you-favor-bar"></span></span><span class="v" id="you-favor">0</span></div>
+        <div class="stat"><span class="lbl">势力</span><span class="bar pow"><span id="you-power-bar"></span></span><span class="v" id="you-power">0</span></div>
+        <div class="stat"><span class="lbl">名望</span><span class="bar rep"><span id="you-rep-bar"></span></span><span class="v" id="you-rep">0</span></div>
+        <div class="stat"><span class="lbl">体力</span><span class="bar energy"><span id="you-energy-bar"></span></span><span class="v" id="you-energy">0</span></div>
+        <div class="stat" style="font-size:11px;color:var(--ink-soft);">
+          美 <span id="you-beauty" class="v">0</span>　
+          才 <span id="you-talent" class="v">0</span>　
+          计 <span id="you-scheme" class="v">0</span>
+        </div>
+        <div class="extras" id="you-extras"></div>
+      </div>
+
+      <div class="pcard">
+        <h3><span id="op-name">对手</span><span class="who">劲敌</span></h3>
+        <div style="margin-bottom:6px"><span class="rank-badge" id="op-rank">答应</span></div>
+        <div class="stat"><span class="lbl">圣宠</span><span class="bar fav"><span id="op-favor-bar"></span></span><span class="v" id="op-favor">0</span></div>
+        <div class="stat"><span class="lbl">势力</span><span class="bar pow"><span id="op-power-bar"></span></span><span class="v" id="op-power">0</span></div>
+        <div class="stat"><span class="lbl">名望</span><span class="bar rep"><span id="op-rep-bar"></span></span><span class="v" id="op-rep">0</span></div>
+        <div class="stat"><span class="lbl">体力</span><span class="bar energy"><span id="op-energy-bar"></span></span><span class="v" id="op-energy">0</span></div>
+        <div class="stat" style="font-size:11px;color:var(--ink-soft);">
+          美 <span id="op-beauty" class="v">0</span>　
+          才 <span id="op-talent" class="v">0</span>　
+          计 <span id="op-scheme" class="v">0</span>
+        </div>
+        <div class="extras" id="op-extras"></div>
+      </div>
+    </div>
+
+    <div class="actions" id="action-grid"></div>
+
+    <div class="ready-row">
+      <span><span class="dot" id="you-dot"></span>本宫已抉择</span>
+      <span><span class="dot" id="op-dot"></span>对手已抉择</span>
+    </div>
+
+    <div class="panel" style="margin-top: 12px; padding: 8px 10px;">
+      <div style="font-size:13px; color: var(--red-deep); letter-spacing: 0.2em; margin-bottom: 6px;">起 居 注</div>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="end-banner" id="end-banner" style="display:none">
+      <h2>本 局 终 结</h2>
+      <div class="winner" id="winner-name"></div>
+      <div class="reason" id="end-reason"></div>
+      <div style="margin-top: 12px;">
+        <button class="primary" id="btn-rematch" style="max-width: 200px; margin: 0 auto;">再 战 一 局</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="hint" style="text-align:center; margin-top: 18px;">
+    《后宫风云》 · 双人联机版 · v2.1
+  </p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const ACTION_DEFS = [
+  { id: 'serve',         em: '🌹', label: '侍寝',   tip: '消耗 25 体力，依美貌+才艺获取圣宠' },
+  { id: 'train_talent',  em: '📚', label: '习才艺', tip: '消耗 10 体力，提升才艺' },
+  { id: 'train_beauty',  em: '💄', label: '修容貌', tip: '消耗 10 体力，提升美貌' },
+  { id: 'build_power',   em: '🌐', label: '结党羽', tip: '消耗 10 体力，提升势力' },
+  { id: 'sabotage',      em: '🗡️', label: '设陷害', tip: '消耗 20 体力，凭心计削弱对手圣宠' },
+  { id: 'defend',        em: '🛡️', label: '自保身', tip: '恢复体力，免疫陷害，提升心计' },
+  { id: 'try_child',     em: '👶', label: '求子嗣', tip: '需圣宠≥50，消耗 30 体力，约 55% 受孕' },
+  { id: 'promote',       em: '👑', label: '争晋位', tip: '满足圣宠/势力门槛即可晋升位分' },
+];
+
+const RANK_REQ = [
+  { favor: 25, power: 0,  rep: 0,  children: 0 },
+  { favor: 40, power: 15, rep: 15, children: 0 },
+  { favor: 50, power: 25, rep: 25, children: 0 },
+  { favor: 60, power: 40, rep: 35, children: 0 },
+  { favor: 65, power: 55, rep: 45, children: 0 },
+  { favor: 70, power: 65, rep: 55, children: 0 },
+  { favor: 80, power: 80, rep: 70, children: 1 },
+];
+
+const $ = (id) => document.getElementById(id);
+const socket = io({ transports: ['websocket', 'polling'] });
+
+let currentRoomCode = null;
+let lastState = null;
+let myChoice = null;
+let lastLogTotal = -1;
+
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function showScreen(name) {
+  $('screen-entry').style.display = name === 'entry' ? '' : 'none';
+  $('screen-lobby').style.display = name === 'lobby' ? '' : 'none';
+  $('screen-game').style.display  = name === 'game'  ? '' : 'none';
+}
+
+// ============== 入口屏 ==============
+$('btn-create').onclick = () => {
+  const name = ($('name-input').value || '').trim() || '佳人';
+  socket.emit('create_room', { name });
+};
+$('btn-show-join').onclick = () => {
+  $('join-field').style.display = '';
+  $('join-btn-row').style.display = '';
+  $('btn-create').parentElement.style.display = 'none';
+  $('btn-show-join').parentElement.style.display = 'none';
+};
+$('btn-back').onclick = () => {
+  $('join-field').style.display = 'none';
+  $('join-btn-row').style.display = 'none';
+  $('btn-create').parentElement.style.display = '';
+  $('btn-show-join').parentElement.style.display = '';
+};
+$('btn-join').onclick = () => {
+  const name = ($('name-input').value || '').trim() || '佳人';
+  const code = ($('code-input').value || '').trim().toUpperCase();
+  if (!code) { showToast('请输入房间号'); return; }
+  socket.emit('join_room', { code, name });
+};
+
+// ============== 大厅屏 ==============
+$('btn-copy').onclick = async () => {
+  if (!currentRoomCode) return;
+  try {
+    await navigator.clipboard.writeText(currentRoomCode);
+    showToast('房间号已复制');
+  } catch {
+    showToast('复制失败，请手抄：' + currentRoomCode);
+  }
+};
+
+// ============== 动作按钮渲染 ==============
+function renderActionButtons() {
+  const grid = $('action-grid');
+  grid.innerHTML = '';
+  const you = lastState && lastState.you;
+  const opp = lastState && lastState.opponent;
+  for (const def of ACTION_DEFS) {
+    const btn = document.createElement('button');
+    btn.className = 'act-btn';
+    btn.title = def.tip;
+    btn.innerHTML = `<span class="em">${def.em}</span><span class="lbl">${def.label}</span>`;
+
+    let disabled = false;
+    if (!you || !opp) disabled = true;
+    if (lastState && lastState.phase !== 'choosing') disabled = true;
+    if (lastState && lastState.youReady) disabled = true;
+
+    if (you) {
+      if (you.imprisoned > 0 && def.id !== 'defend') disabled = true;
+      if (def.id === 'serve' && (you.energy < 25 || you.pregnant > 0)) disabled = true;
+      if ((def.id === 'train_talent' || def.id === 'train_beauty' || def.id === 'build_power') && you.energy < 10) disabled = true;
+      if (def.id === 'sabotage' && you.energy < 20) disabled = true;
+      if (def.id === 'try_child' && (you.favor < 50 || you.pregnant > 0 || you.energy < 30)) disabled = true;
+      if (def.id === 'promote') {
+        if (you.rank >= 7) disabled = true;
+        else {
+          const r = RANK_REQ[you.rank];
+          if (you.favor < r.favor || you.power < r.power || (you.reputation || 0) < r.rep || you.children < r.children) disabled = true;
+        }
+      }
+    }
+
+    btn.disabled = disabled;
+    if (myChoice === def.id) btn.classList.add('chosen');
+
+    btn.onclick = () => {
+      if (btn.disabled) return;
+      myChoice = def.id;
+      socket.emit('choose_action', { action: def.id });
+      renderActionButtons();
+    };
+    grid.appendChild(btn);
+  }
+}
+
+function setBar(id, v) {
+  const el = $(id);
+  if (el) el.style.width = Math.max(0, Math.min(100, v)) + '%';
+}
+
+function renderExtras(target, state) {
+  let html = '';
+  if (state.children > 0) {
+    const names = (state.childrenNames || []).join('、');
+    html += `<span class="tag children" title="${names}">子嗣 ×${state.children}${names ? '：' + names : ''}</span>`;
+  }
+  if (state.pregnant > 0) html += `<span class="tag pregnant">怀孕 ${3 - state.pregnant}/3</span>`;
+  if (state.imprisoned > 0) html += `<span class="tag imprisoned">禁足</span>`;
+  $(target).innerHTML = html || '<span style="opacity:0.5">—</span>';
+}
+
+function renderState(s) {
+  if (!s) return;
+  lastState = s;
+  $('turn-num').textContent = s.turn;
+  $('max-turns').textContent = s.maxTurns;
+
+  const tip = $('phase-tip');
+  if (s.phase === 'waiting') tip.textContent = '等候对手入宫…';
+  else if (s.phase === 'ended') tip.textContent = '本局终了';
+  else if (s.youReady && !s.opponentReady) tip.textContent = '已抉择，待对手…';
+  else if (!s.youReady && s.opponentReady) tip.textContent = '对手已抉择，请速作决断';
+  else if (s.youReady && s.opponentReady) tip.textContent = '同步揭晓中…';
+  else tip.textContent = '请选择本月动作';
+
+  $('you-dot').classList.toggle('ok', !!s.youReady);
+  $('op-dot').classList.toggle('ok', !!s.opponentReady);
+
+  if (s.you) {
+    $('you-name').textContent = s.you.name;
+    $('you-rank').textContent = s.you.rankName;
+    $('you-favor').textContent = s.you.favor;
+    $('you-power').textContent = s.you.power;
+    $('you-rep').textContent = s.you.reputation ?? 0;
+    $('you-energy').textContent = s.you.energy;
+    $('you-beauty').textContent = s.you.beauty;
+    $('you-talent').textContent = s.you.talent;
+    $('you-scheme').textContent = s.you.scheme;
+    setBar('you-favor-bar', s.you.favor);
+    setBar('you-power-bar', s.you.power);
+    setBar('you-rep-bar', s.you.reputation ?? 0);
+    setBar('you-energy-bar', s.you.energy);
+    renderExtras('you-extras', s.you);
+  }
+  if (s.opponent) {
+    $('op-name').textContent = s.opponent.name;
+    $('op-rank').textContent = s.opponent.rankName;
+    $('op-favor').textContent = s.opponent.favor;
+    $('op-power').textContent = s.opponent.power;
+    $('op-rep').textContent = s.opponent.reputation ?? 0;
+    $('op-energy').textContent = s.opponent.energy;
+    $('op-beauty').textContent = s.opponent.beauty;
+    $('op-talent').textContent = s.opponent.talent;
+    $('op-scheme').textContent = s.opponent.scheme;
+    setBar('op-favor-bar', s.opponent.favor);
+    setBar('op-power-bar', s.opponent.power);
+    setBar('op-rep-bar', s.opponent.reputation ?? 0);
+    setBar('op-energy-bar', s.opponent.energy);
+    renderExtras('op-extras', s.opponent);
+  } else {
+    $('op-name').textContent = '虚位以待…';
+  }
+
+  // 日志：用 logTotal 比较，修复 6 月后日志被截断后不再刷新的 Bug
+  const logEl = $('log');
+  const total = s.logTotal ?? (s.log ? s.log.length : 0);
+  if (total !== lastLogTotal) {
+    logEl.innerHTML = (s.log || []).map((line) => {
+      if (line.startsWith('📜')) return `<div class="turn-divider">${line}</div>`;
+      return `<div>${line}</div>`;
+    }).join('');
+    logEl.scrollTop = logEl.scrollHeight;
+    lastLogTotal = total;
+  }
+
+  // 结束横幅
+  if (s.phase === 'ended') {
+    $('end-banner').style.display = '';
+    const lastLines = (s.log || []).slice(-2);
+    let winLine = lastLines.find((l) => l.includes('胜出')) || lastLines[lastLines.length - 1] || '';
+    let reason = lastLines.find((l) => l.startsWith('🏁')) || '';
+    $('winner-name').textContent = winLine.replace(/^🌟\s*/, '');
+    $('end-reason').textContent = reason.replace(/^🏁\s*/, '');
+  } else {
+    $('end-banner').style.display = 'none';
+  }
+
+  // 新回合开始时清掉本地选择高亮
+  if (s.phase === 'choosing' && !s.youReady) {
+    myChoice = null;
+  }
+
+  renderActionButtons();
+}
+
+// ============== Socket 事件 ==============
+socket.on('joined', ({ code, role }) => {
+  currentRoomCode = code;
+  $('room-code').textContent = code;
+  if (role === 'host') {
+    showScreen('lobby');
+  } else {
+    showScreen('game');
+  }
+});
+
+socket.on('state', (s) => {
+  if (s.youHaveOpponent) {
+    showScreen('game');
+  }
+  renderState(s);
+});
+
+socket.on('error_msg', (msg) => showToast(msg));
+
+socket.on('disconnect', () => showToast('连接已断开，请刷新重试'));
+
+$('btn-rematch').onclick = () => {
+  myChoice = null;
+  lastLogTotal = -1;
+  socket.emit('rematch');
+};
+</script>
+</body>
+</html>
