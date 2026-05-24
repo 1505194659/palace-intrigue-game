@@ -117,6 +117,28 @@
   .bar.rep > span { background:linear-gradient(90deg,#8b6a3d,#d4a64a); }
   .bar.energy > span { background:linear-gradient(90deg,#5a8c3a,#b1d96e); }
   .stat .v { float:right; font-variant-numeric:tabular-nums; color:var(--ink); }
+  /* 美/才/计 - 三个独立徽章避免数字粘在一起 */
+  .sub-stats { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .sub-stats .chip {
+    flex:1; min-width:0;
+    display:inline-flex; align-items:center; justify-content:center; gap:3px;
+    padding:3px 6px; font-size:11px;
+    background:rgba(212,165,116,0.22);
+    border:1px solid var(--gold); border-radius:3px;
+    color:var(--ink); white-space:nowrap;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.35);
+  }
+  .sub-stats .chip b { color:var(--red-deep); font-variant-numeric:tabular-nums; font-weight:700; }
+  @media (max-width:380px) { .sub-stats .chip { font-size:10px; padding:2px 4px; } }
+  /* 子属性徽章：美/才/计 */
+  .sub-stats { margin-top:4px; display:flex; flex-wrap:wrap; gap:4px; }
+  .sub-stats .chip {
+    display:inline-flex; align-items:center; gap:3px;
+    padding:2px 6px; font-size:11px; line-height:1.4;
+    background:rgba(212,165,116,0.18); border:1px solid rgba(184,134,42,0.45);
+    border-radius:10px; color:var(--ink); white-space:nowrap;
+  }
+  .sub-stats .chip b { color:var(--red-deep); font-weight:700; }
   .extras { font-size:11px; color:var(--ink-soft); margin-top:6px; min-height:16px; }
   .extras .tag { display:inline-block; padding:1px 6px; border:1px solid var(--line); border-radius:2px; margin-right:4px; background:#fff8e7; }
   .extras .tag.pregnant { color:#b73977; border-color:#b73977; }
@@ -164,6 +186,71 @@
   .card-item .nm { font-size:13px; font-weight:bold; color:var(--red-deep); margin-top:2px; }
   .card-item .ds { font-size:10px; color:var(--ink-soft); margin-top:2px; line-height:1.3; }
   .empty-hand { font-size:11px; color:var(--ink-soft); padding:8px; opacity:0.6; }
+
+  /* === 道具详情弹层 === */
+  .card-modal-bg {
+    position:fixed; inset:0; background:rgba(40,18,10,0.55);
+    z-index:200; display:flex; align-items:center; justify-content:center;
+    padding:20px; animation:fadein 0.18s ease;
+  }
+  @keyframes fadein { from { opacity:0; } to { opacity:1; } }
+  .card-modal {
+    background:linear-gradient(180deg,#fff8e7,#ead7b2);
+    border:2px solid var(--gold); border-radius:8px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.45);
+    max-width:340px; width:100%; padding:18px 18px 14px;
+    text-align:center;
+  }
+  .card-modal .ic { font-size:54px; line-height:1; margin-bottom:6px; }
+  .card-modal h4 {
+    margin:0 0 4px; font-size:18px; letter-spacing:0.18em;
+    color:var(--red-deep);
+  }
+  .card-modal .type-tag {
+    display:inline-block; padding:2px 8px; font-size:11px;
+    border-radius:2px; margin-bottom:10px;
+    background:rgba(184,134,42,0.18); border:1px solid var(--gold);
+    color:var(--ink-soft); letter-spacing:0.1em;
+  }
+  .card-modal .desc {
+    font-size:14px; line-height:1.7; color:var(--ink);
+    background:#fff8e7; border:1px solid var(--line); border-radius:4px;
+    padding:10px 12px; margin:8px 0 14px;
+  }
+  .card-modal .btn-row { display:flex; gap:8px; }
+  .card-modal button {
+    flex:1; padding:10px; font-size:14px; letter-spacing:0.15em;
+    border:1px solid var(--gold); border-radius:4px; cursor:pointer;
+    background:linear-gradient(180deg,#fff8e7,#ecd9b3); color:var(--red-deep);
+  }
+  .card-modal button.primary {
+    background:linear-gradient(180deg,#a02428,#7a1818);
+    color:#fbe9c2; border-color:#5a1010;
+  }
+  .card-modal button:active { transform:translateY(1px); }
+
+  /* 重选身份模态 */
+  .reselect-modal { max-width:520px; width:100%; }
+  .reselect-modal h4 { margin:0 0 12px; font-size:18px; letter-spacing:0.2em; color:var(--red-deep); }
+  .reselect-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+  .rs-card {
+    padding:0; overflow:hidden; cursor:pointer; position:relative;
+    aspect-ratio: 547 / 480;
+    background:linear-gradient(180deg,#fff8e7,#ecd9b3);
+    border:1px solid var(--gold); border-radius:5px;
+    transition:transform 0.12s, box-shadow 0.12s;
+  }
+  .rs-card:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(184,134,42,0.45); }
+  .rs-card:active { transform:translateY(0); }
+  .rs-card .portrait-wrap { width:100%; height:100%; display:block; }
+  .rs-card .portrait, .rs-card .portrait-img { width:100%; height:100%; object-fit:cover; border-radius:0; box-shadow:none; }
+  .rs-card .rs-name {
+    position:absolute; left:6px; top:6px; padding:1px 6px;
+    background:rgba(160,36,40,0.85); color:#fbe9c2;
+    font-size:11px; letter-spacing:0.15em; border-radius:2px;
+  }
+  /* SVG fallback 时给个名字打底 */
+  body[data-portrait-mode="svg"] .rs-card { aspect-ratio: auto; min-height:80px; padding:8px; }
 
   .log { background:#fff8e7; border:1px solid var(--line); border-radius:4px;
          padding:10px 12px; max-height:200px; overflow-y:auto;
@@ -336,11 +423,15 @@
   .class-card .portrait-wrap .portrait { width:100%; height:100%; }
   /* single 模式：整版卡片图（名牌+人物+标题+判词都在图里）
      卡片 = 一张完整 AI 卡牌图，铺满无留白，隐藏外层文字 */
+  body[data-portrait-mode="single"] .class-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
   body[data-portrait-mode="single"] .class-card {
     padding:0; overflow:hidden;
     align-items:stretch; justify-content:stretch;
     position:relative;
-    aspect-ratio: 452 / 580;  /* 切片实际比例 */
+    aspect-ratio: 547 / 480;  /* 横版卡片比例 */
     min-height:0; gap:0;
   }
   body[data-portrait-mode="single"] .class-card .portrait-wrap {
@@ -373,15 +464,35 @@
     body[data-portrait-mode="sprite"] .class-card .portrait-wrap { width:40px; height:160px; }
   }
 
-  /* pcard 角落小立绘（保持 1:1.7 视窗比例，避免太占位） */
+  /* pcard 角落圆形头像 */
   .pcard { position:relative; }
-  .pcard .mini-portrait { position:absolute; right:6px; top:6px; width:36px; height:62px; opacity:0.92; pointer-events:none; }
-  .pcard h3 { padding-right:46px; }
-  /* mini 立绘里把 sprite 显示上半部（人物头肩）*/
+  .pcard .mini-portrait {
+    position:absolute; right:8px; top:8px;
+    width:56px; height:56px; border-radius:50%;
+    overflow:hidden; pointer-events:none;
+    border:2px solid var(--gold);
+    box-shadow:0 1px 4px rgba(60,30,10,0.25), inset 0 0 0 1px rgba(255,255,255,0.4);
+    background:#fbe9c2;
+  }
+  .pcard h3 { padding-right:66px; }
+  /* sprite 模式：取每列上半部（人物头肩）*/
   .pcard .mini-portrait .sprite-frame {
     background-size: 600% 350%;
-    background-position-y: 18%;
+    background-position-y: 12%;
   }
+  /* single 模式：图是横版，左半是名牌/描述，右半是人物。
+     头像聚焦右上人物头部 */
+  .pcard .mini-portrait .portrait,
+  .pcard .mini-portrait .portrait-img {
+    width:100%; height:100%; border-radius:0; box-shadow:none;
+  }
+  body[data-portrait-mode="single"] .pcard .mini-portrait .portrait-img {
+    object-fit:cover;
+    object-position: 75% 30%;
+    transform: scale(2.2);
+    transform-origin: 75% 30%;
+  }
+  .pcard .mini-portrait .petal { display:none; }
 
   /* === BGM 浮动按钮 === */
   .bgm-btn {
@@ -462,8 +573,10 @@
         <div class="stat"><span class="lbl">势力</span><span class="bar pow"><span id="you-power-bar"></span></span><span class="v" id="you-power">0</span></div>
         <div class="stat"><span class="lbl">名望</span><span class="bar rep"><span id="you-rep-bar"></span></span><span class="v" id="you-rep">0</span></div>
         <div class="stat"><span class="lbl">体力</span><span class="bar energy"><span id="you-energy-bar"></span></span><span class="v" id="you-energy">0</span></div>
-        <div class="stat" style="font-size:11px; color:var(--ink-soft);">
-          美 <span id="you-beauty" class="v">0</span>　才 <span id="you-talent" class="v">0</span>　计 <span id="you-scheme" class="v">0</span>
+        <div class="sub-stats">
+          <span class="chip" title="美貌：影响侍寝胜负">💄 美 <b id="you-beauty">0</b></span>
+          <span class="chip" title="才艺：影响侍寝胜负与名望">📚 才 <b id="you-talent">0</b></span>
+          <span class="chip" title="心计：影响陷害命中">🦂 计 <b id="you-scheme">0</b></span>
         </div>
         <div class="extras" id="you-extras"></div>
       </div>
@@ -475,8 +588,10 @@
         <div class="stat"><span class="lbl">势力</span><span class="bar pow"><span id="op-power-bar"></span></span><span class="v" id="op-power">0</span></div>
         <div class="stat"><span class="lbl">名望</span><span class="bar rep"><span id="op-rep-bar"></span></span><span class="v" id="op-rep">0</span></div>
         <div class="stat"><span class="lbl">体力</span><span class="bar energy"><span id="op-energy-bar"></span></span><span class="v" id="op-energy">0</span></div>
-        <div class="stat" style="font-size:11px; color:var(--ink-soft);">
-          美 <span id="op-beauty" class="v">0</span>　才 <span id="op-talent" class="v">0</span>　计 <span id="op-scheme" class="v">0</span>
+        <div class="sub-stats">
+          <span class="chip" title="美貌">💄 美 <b id="op-beauty">0</b></span>
+          <span class="chip" title="才艺">📚 才 <b id="op-talent">0</b></span>
+          <span class="chip" title="心计">🦂 计 <b id="op-scheme">0</b></span>
         </div>
         <div class="extras" id="op-extras"></div>
       </div>
@@ -505,7 +620,10 @@
       <h2>本 局 终 结</h2>
       <div class="winner" id="winner-name"></div>
       <div class="reason" id="end-reason"></div>
-      <div style="margin-top:12px;"><button class="primary" id="btn-rematch" style="max-width:200px; margin:0 auto;">再 战 一 局</button></div>
+      <div style="margin-top:12px; display:flex; gap:8px; max-width:340px; margin-left:auto; margin-right:auto;">
+        <button class="primary" id="btn-rematch">再 战 同 角 色</button>
+        <button class="ghost" id="btn-reselect">换 角 色 再 战</button>
+      </div>
     </div>
   </section>
 
@@ -750,6 +868,28 @@ function renderExtras(target, st) {
   $(target).innerHTML = html || '<span style="opacity:0.5">—</span>';
 }
 
+function showCardDetail(card, meta, canUse, onUse) {
+  const bg = document.createElement('div');
+  bg.className = 'card-modal-bg';
+  const typeLabel = meta.type === 'passive' ? '被动' : (meta.type === 'active' ? '主动' : '');
+  bg.innerHTML = `<div class="card-modal" onclick="event.stopPropagation()">
+    <div class="ic">${card.icon || meta.icon || '🃏'}</div>
+    <h4>${card.name || meta.name || card.id}</h4>
+    ${typeLabel ? `<span class="type-tag">${typeLabel}</span>` : ''}
+    <div class="desc">${meta.description || '（无说明）'}</div>
+    <div class="btn-row">
+      <button class="ghost" id="cm-cancel">关 闭</button>
+      ${canUse ? '<button class="primary" id="cm-use">立 即 使 用</button>' : ''}
+    </div>
+  </div>`;
+  bg.onclick = () => bg.remove();
+  document.body.appendChild(bg);
+  const cancel = bg.querySelector('#cm-cancel');
+  if (cancel) cancel.onclick = () => bg.remove();
+  const use = bg.querySelector('#cm-use');
+  if (use) use.onclick = () => { bg.remove(); onUse(); };
+}
+
 function renderHand(you) {
   const hand = $('hand');
   hand.innerHTML = '';
@@ -763,9 +903,13 @@ function renderHand(you) {
     div.className = 'card-item' + (you.usedCardThisMonth ? ' disabled' : '');
     div.innerHTML = `<div class="ic">${card.icon || meta.icon || '🃏'}</div><div class="nm">${card.name || meta.name || card.id}</div><div class="ds">${meta.description || ''}</div>`;
     div.onclick = () => {
-      if (you.usedCardThisMonth) { showToast('本月已使用过道具'); return; }
-      if (lastState && lastState.phase !== 'choosing') { showToast('当前阶段不能使用'); return; }
-      socket.emit('use_card', { cardId: card.id });
+      const isActive = meta.type !== 'passive';
+      const canUseNow = !you.usedCardThisMonth
+        && (!lastState || lastState.phase === 'choosing')
+        && isActive;
+      showCardDetail(card, meta, canUseNow, () => {
+        socket.emit('use_card', { cardId: card.id });
+      });
     };
     hand.appendChild(div);
   }
@@ -1193,7 +1337,49 @@ $('btn-rematch').onclick = () => {
   myChoice = null; lastLogTotal = -1;
   socket.emit('rematch', { classId: selectedClass });
 };
+$('btn-reselect').onclick = () => { openReselectModal(); };
 $('g-btn-rematch').onclick = () => { lastGLogTotal = -1; socket.emit('rematch'); };
+
+function openReselectModal() {
+  if (!META.classes || !META.classes.length) {
+    socket.emit('rematch', { classId: selectedClass });
+    return;
+  }
+  const order = ['default','talent','seductress','schemer','noble','healer'];
+  const sorted = META.classes.slice().sort((a, b) => {
+    const ai = order.indexOf(a.id); const bi = order.indexOf(b.id);
+    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+  });
+  const bg = document.createElement('div');
+  bg.className = 'card-modal-bg';
+  bg.onclick = () => bg.remove();
+  const inner = document.createElement('div');
+  inner.className = 'card-modal reselect-modal';
+  inner.onclick = (e) => e.stopPropagation();
+  inner.innerHTML = '<h4>请 重 选 身 份</h4><div class="reselect-grid"></div>'
+    + '<div class="btn-row" style="margin-top:10px;"><button id="rs-cancel">取 消</button></div>';
+  bg.appendChild(inner);
+  const grid = inner.querySelector('.reselect-grid');
+  const hasPortraits = typeof window.renderPortrait === 'function';
+  for (const c of sorted) {
+    const btn = document.createElement('button');
+    btn.className = 'rs-card';
+    btn.dataset.cls = c.id;
+    btn.innerHTML = hasPortraits
+      ? `<div class="portrait-wrap">${window.renderPortrait(c.id, 0, { fillParent: true })}</div>
+         <div class="rs-name">${c.name}</div>`
+      : `<div class="rs-name">${c.icon || '🎭'} ${c.name}</div>`;
+    btn.onclick = () => {
+      selectedClass = c.id;
+      myChoice = null; lastLogTotal = -1;
+      bg.remove();
+      socket.emit('rematch', { classId: c.id });
+    };
+    grid.appendChild(btn);
+  }
+  inner.querySelector('#rs-cancel').onclick = () => bg.remove();
+  document.body.appendChild(bg);
+}
 
 // ============== 立绘工具 ==============
 function setMiniPortrait(elId, classId) {

@@ -24,6 +24,7 @@ function init(opts) {
     rounds: [],            // [{a, b, winner: 0|1|-1}]
     score: [0, 0],
     pending: [null, null],
+    used: [[], []],        // 各自已用过的数，不能重复（避免双方一直 100）
     winner: null,
     attackerIdx,
     bestOf: BEST_OF,
@@ -43,12 +44,18 @@ function validateAction(state, playerIdx, payload) {
   if (!Number.isInteger(n) || n < RANGE_MIN || n > RANGE_MAX) {
     return { ok: false, reason: `请输入 ${RANGE_MIN}-${RANGE_MAX} 的整数` };
   }
+  const used = state.used && state.used[playerIdx] ? state.used[playerIdx] : [];
+  if (used.includes(n)) {
+    return { ok: false, reason: `${n} 已用过，请换一个数` };
+  }
   return { ok: true };
 }
 
 function applyAction(state, playerIdx, payload) {
   const n = Number(payload.num);
   state.pending[playerIdx] = n;
+  state.used = state.used || [[], []];
+  state.used[playerIdx].push(n);
   const events = [];
   if (state.pending[0] != null && state.pending[1] != null) {
     const a = state.pending[0], b = state.pending[1];
@@ -88,6 +95,7 @@ function canAct(state, playerIdx) {
 
 function buildView(state, playerIdx) {
   const op = 1 - playerIdx;
+  const used = state.used && state.used[playerIdx] ? state.used[playerIdx] : [];
   return {
     type: 'guess',
     rounds: state.rounds,
@@ -101,6 +109,7 @@ function buildView(state, playerIdx) {
     winTo: state.winTo,
     range: state.range,
     deadline: state.deadline,
+    yourUsed: used.slice(),
   };
 }
 

@@ -32,8 +32,8 @@ const PAD = 0; // pixels trimmed from each card edge (gutters between cards)
       if (idx >= IDS.length) break;
       const x = Math.round(c * cellW + PAD);
       const y = Math.round(r * cellH + PAD);
-      const w = Math.round(cellW - 2 * PAD);
-      const h = Math.round(cellH - 2 * PAD);
+      const w = Math.min(Math.round(cellW - 2 * PAD), W - x);
+      const h = Math.min(Math.round(cellH - 2 * PAD), H - y);
       const out = img.clone().crop({ x, y, w, h });
       out.resize({ w: 500 });
       const outPath = path.join(OUT, IDS[idx] + '.png');

@@ -164,11 +164,13 @@ function useCard(self, other, cardId, log) {
     }
     case 'reveal_last': {
       const opLast = other.lastAction;
+      // 公共日志只显示"使用了密信"，详细情报只发给 self
+      log.push(`📜 ${self.name} 拆开「${card.name}」（密阅）`);
       if (opLast) {
         self.revealedAction = opLast;
-        log.push(`📜 ${self.name} 拆「${card.name}」，洞悉 ${other.name} 上月所为：${ACTION_LABEL[opLast]}`);
+        log.push({ text: `🔍 密信揭示：${other.name} 上月选了 ${ACTION_LABEL[opLast]}`, private: self.name });
       } else {
-        log.push(`📜 ${self.name} 拆「${card.name}」，但对方尚无上月动作`);
+        log.push({ text: `🔍 密信揭示：${other.name} 尚无上月动作`, private: self.name });
       }
       break;
     }
@@ -187,9 +189,12 @@ function onTurnStart(state, log, rng, isFirstTurn) {
   state.usedCardThisMonth = false;
   state.revealedAction = null;
 
-  // 应用上月被对方种下的 debuff
+  // 应用上月被对方种下的 debuff（龟甲符可挡）
   if (state._pendingDebuff) {
-    if (state._pendingDebuff.energyMinus) {
+    if (state.shields && state.shields.event) {
+      delete state.shields.event;
+      log.push(`🔮 ${state.name} 龟甲符护体，蛊毒尽散`);
+    } else if (state._pendingDebuff.energyMinus) {
       const before = state.energy;
       state.energy = Math.max(0, state.energy - state._pendingDebuff.energyMinus);
       log.push(`🦋 ${state.name} 蛊毒发作，体力 -${before - state.energy}`);
@@ -356,6 +361,8 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
         log.push(`🛡️ ${other.name} 早有防备，${self.name} 阴谋落空`);
         self.scheme = clamp(self.scheme - 3, 0, 100);
         self.reputation = clamp(self.reputation - 3, 0, 100);
+        // 被发现陷害他人：圣宠和名望都受损
+        self.favor = Math.max(5, self.favor - 6);
         break;
       }
       let success;
@@ -380,6 +387,20 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
         const actualDmg = other.favor - newFavor;
         other.favor = newFavor;
         log.push(`🗡️ ${self.name} ${pick(FLAVOR.sabotage_hit, rng)}，${other.name} 圣宠 -${actualDmg}`);
+        // 滑胎：怀孕中被陷害成功，30% 概率小产
+        if (other.pregnant > 0 && randInt(1, 100, rng) <= 30) {
+          // 龟甲符可挡（也算下月负面）
+          if (other.shields && other.shields.event) {
+            delete other.shields.event;
+            log.push(`🔮 ${other.name} 龟甲符闪光，护住胎气`);
+          } else {
+            const mLeft = other.pregnant;
+            other.pregnant = 0;
+            other.favor = Math.max(5, other.favor - 15);
+            other.reputation = Math.max(0, other.reputation - 8);
+            log.push(`💔 ${other.name} 胎气受惊，小产 (-15 圣宠 -8 名望，痛失 ${mLeft} 月胎)`);
+          }
+        }
         if (randInt(1, 100, rng) <= 22) {
           other.imprisoned = 1;
           log.push(`⛓️ ${E}震怒，${other.name} 禁足 1 月`);
@@ -387,9 +408,16 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
         self.scheme = clamp(self.scheme + 2, 0, 100);
         self.reputation = clamp(self.reputation - 3, 0, 100);
       } else {
+        // 陷害失败：阴谋败露，惩罚加重
         log.push(`💥 ${self.name} ${pick(FLAVOR.sabotage_miss, rng)}`);
-        self.favor = Math.max(5, self.favor - 4);
-        self.reputation = clamp(self.reputation - 5, 0, 100);
+        self.favor = Math.max(5, self.favor - 8);
+        self.reputation = clamp(self.reputation - 8, 0, 100);
+        self.scheme = clamp(self.scheme - 2, 0, 100);
+        // 25% 概率反被禁足 1 月（弄巧成拙）
+        if (randInt(1, 100, rng) <= 25) {
+          self.imprisoned = 1;
+          log.push(`⛓️ 阴谋败露，${self.name} 反被禁足 1 月`);
+        }
       }
       break;
     }

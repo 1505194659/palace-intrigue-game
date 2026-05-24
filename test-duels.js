@@ -135,14 +135,17 @@ section('6. guess 边界 / 非法输入', () => {
   assert(guess.validateAction(s, 0, { num: 100 }).ok, '100 合法');
 });
 
-section('7. guess 同数平局重抽', () => {
+section('7. guess 同数平局重抽 + 禁选重复数', () => {
   const s = guess.init({});
   guess.applyAction(s, 0, { num: 50 });
   guess.applyAction(s, 1, { num: 50 });
   assert(s.score[0] === 0 && s.score[1] === 0, '平局不计分');
   assert(s.rounds[0].winner === -1, '记录平局');
-  // 还能继续出
   assert(guess.canAct(s, 0) && guess.canAct(s, 1), '双方仍可继续');
+  // 关键：双方都不能再选 50（避免无限平局）
+  assert(!guess.validateAction(s, 0, { num: 50 }).ok, 'P0 不能再选 50');
+  assert(!guess.validateAction(s, 1, { num: 50 }).ok, 'P1 不能再选 50');
+  assert(guess.validateAction(s, 0, { num: 51 }).ok, 'P0 可选 51');
 });
 
 section('8. guess 完整三局两胜', () => {

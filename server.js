@@ -159,17 +159,32 @@ function buildDuelView(room, forSocket) {
   return view;
 }
 
+// 过滤私有 log：只显示 string 或 {private:<myName>} 的项；
+// 把 {text, private} 拍平成 string；对手的私有 log 整条丢掉
+function filterLogForPlayer(log, myName) {
+  const out = [];
+  for (const item of log) {
+    if (typeof item === 'string') { out.push(item); continue; }
+    if (item && typeof item === 'object') {
+      if (!item.private || item.private === myName) out.push(item.text);
+    }
+  }
+  return out;
+}
+
 function buildPalaceView(room, forSocket) {
   const me = room.players.find((p) => p.socketId === forSocket);
   const op = room.players.find((p) => p.socketId !== forSocket);
+  const myName = me ? me.state.name : '';
+  const visible = filterLogForPlayer(room.log, myName);
   return {
     code: room.code,
     mode: 'palace',
     turn: room.turn,
     maxTurns: room.config.palace.maxTurns,
     phase: room.phase,
-    log: room.log.slice(-200),
-    logTotal: room.log.length,
+    log: visible.slice(-200),
+    logTotal: visible.length,
     appellation: room.config.appellation,
     you: me ? game.publicView(me.state, { self: true }) : null,
     opponent: op ? game.publicView(op.state, { self: false }) : null,
