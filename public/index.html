@@ -35,7 +35,7 @@
   }
   #sakura-canvas {
     position:fixed; inset:0; width:100vw; height:100vh;
-    pointer-events:none; z-index:1; opacity:0.78;
+    pointer-events:none; z-index:20; opacity:0.58;
   }
   .palace-lantern {
     position:fixed; top:18px; width:78px; height:auto;
@@ -61,6 +61,10 @@
   #app { position:relative; z-index:3; max-width:760px; margin:0 auto; padding:14px 12px 28px; min-height:100%; }
   h1.title { text-align:center; font-size:30px; letter-spacing:0.4em; margin:14px 0 4px; color:var(--red-deep); text-shadow:0 2px 0 rgba(139,106,61,0.2); }
   .subtitle { text-align:center; color:var(--ink-soft); font-size:13px; letter-spacing:0.3em; margin-bottom:18px; }
+  @media (max-width:700px) {
+    .palace-lantern { display:none; }
+    #sakura-canvas { opacity:0.48; }
+  }
 
   .panel { background:linear-gradient(180deg,#f7ecd1,#ead7b2); border:1px solid var(--line); border-radius:6px;
            box-shadow:0 4px 12px var(--shadow), inset 0 0 0 1px rgba(255,255,255,0.5);
@@ -1612,34 +1616,103 @@ function setMiniPortrait(elId, classId) {
   if (!canvas || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const cxt = canvas.getContext('2d');
   const img = new Image();
-  const sakuraNum = 21;
-  const limitTimes = 2;
-  const limitArray = new Array(sakuraNum).fill(limitTimes);
-  let sakuras = [];
-  let rafId = 0;
+  let stop;
   let dpr = 1;
+  let sakuraList;
 
-  function Sakura(x, y, s, r, fn, idx) {
-    this.x = x; this.y = y; this.s = s; this.r = r; this.fn = fn; this.idx = idx;
+  function Sakura(x, y, s, r, fn) {
+    this.x = x;
+    this.y = y;
+    this.s = s;
+    this.r = r;
+    this.fn = fn;
   }
+
   Sakura.prototype.draw = function draw(cxt) {
     cxt.save();
     cxt.translate(this.x, this.y);
     cxt.rotate(this.r);
-    cxt.drawImage(img, -20 * this.s, -20 * this.s, 40 * this.s, 40 * this.s);
+    cxt.drawImage(img, 0, 0, 40 * this.s, 40 * this.s);
     cxt.restore();
   };
+
   Sakura.prototype.update = function update() {
     this.x = this.fn.x(this.x, this.y);
     this.y = this.fn.y(this.y, this.y);
     this.r = this.fn.r(this.r);
-    if (this.x > window.innerWidth + 60 || this.x < -60 || this.y > window.innerHeight + 60 || this.y < -60) {
-      if (limitArray[this.idx] === -1 || limitArray[this.idx] > 0) {
-        if (limitArray[this.idx] > 0) limitArray[this.idx]--;
-        this.x = Math.random() * window.innerWidth;
-        this.y = -20 - Math.random() * 80;
+    if (this.x > window.innerWidth || this.x < -60 || this.y > window.innerHeight || this.y < -60) {
+      this.r = getRandom('fnr');
+      if (Math.random() > 0.4) {
+        this.x = getRandom('x');
+        this.y = -40;
+      } else {
+        this.x = window.innerWidth;
+        this.y = getRandom('y');
       }
+      this.s = getRandom('s');
+      this.r = getRandom('r');
     }
+  };
+
+  function SakuraList() {
+    this.list = [];
+  }
+  SakuraList.prototype.push = function push(sakura) {
+    this.list.push(sakura);
+  };
+  SakuraList.prototype.update = function update() {
+    let i = 0;
+    const len = this.list.length;
+    for (; i < len; i++) {
+      this.list[i].update();
+    }
+  };
+  SakuraList.prototype.draw = function draw(cxt) {
+    let i = 0;
+    const len = this.list.length;
+    for (; i < len; i++) {
+      this.list[i].draw(cxt);
+    }
+  };
+
+  function getRandom(option) {
+    let ret;
+    let random;
+    switch (option) {
+      case 'x':
+        ret = Math.random() * window.innerWidth;
+        break;
+      case 'y':
+        ret = Math.random() * window.innerHeight;
+        break;
+      case 's':
+        ret = 0.34 + Math.random() * 0.56;
+        break;
+      case 'r':
+        ret = Math.random() * 6;
+        break;
+      case 'fnx':
+        random = -0.5 + Math.random();
+        ret = function fnx(x, y) {
+          return x + 0.5 * random - 1.7 + Math.sin(y * 0.012) * 0.55;
+        };
+        break;
+      case 'fny':
+        random = 1.35 + Math.random() * 0.75;
+        ret = function fny(x, y) {
+          return y + random;
+        };
+        break;
+      case 'fnr':
+        random = Math.random() * 0.03;
+        ret = function fnr(r) {
+          return r + random;
+        };
+        break;
+      default:
+        ret = 0;
+    }
+    return ret;
   };
 
   function resize() {
@@ -1650,49 +1723,53 @@ function setMiniPortrait(elId, classId) {
     canvas.style.height = window.innerHeight + 'px';
     cxt.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  function createSakuras() {
-    sakuras = [];
-    for (let i = 0; i < sakuraNum; i++) {
-      const drift = 0.35 + Math.random() * 0.65;
-      const fall = 0.45 + Math.random() * 0.75;
-      const wave = Math.random() * Math.PI * 2;
-      sakuras.push(new Sakura(
-        Math.random() * window.innerWidth,
-        Math.random() * window.innerHeight,
-        0.34 + Math.random() * 0.50,
-        Math.random() * Math.PI,
-        {
-          x: (x, y) => x + Math.sin((y * 0.012) + wave) * drift + 0.18,
-          y: (y) => y + fall,
-          r: (r) => r + 0.006 + Math.random() * 0.004
-        },
-        i
-      ));
-    }
-  }
-  function tick() {
-    cxt.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    for (const sakura of sakuras) {
-      sakura.update();
-      sakura.draw(cxt);
-    }
-    rafId = requestAnimationFrame(tick);
-  }
-  window.addEventListener('resize', () => {
+
+  function startSakura() {
+    stopp();
     resize();
-    createSakuras();
+    sakuraList = new SakuraList();
+    const sakuraNum = window.innerWidth < 700 ? 28 : 50;
+    for (let i = 0; i < sakuraNum; i++) {
+      const sakura = new Sakura(
+        getRandom('x'),
+        getRandom('y'),
+        getRandom('s'),
+        getRandom('r'),
+        {
+          x: getRandom('fnx'),
+          y: getRandom('fny'),
+          r: getRandom('fnr')
+        });
+      sakura.draw(cxt);
+      sakuraList.push(sakura);
+    }
+
+    const loop = function loop() {
+      cxt.clearRect(0, 0, canvas.width, canvas.height);
+      sakuraList.update();
+      sakuraList.draw(cxt);
+      stop = requestAnimationFrame(loop);
+    };
+    stop = requestAnimationFrame(loop);
+  }
+
+  function stopp() {
+    if (stop) {
+      cancelAnimationFrame(stop);
+      stop = null;
+    }
+  }
+
+  window.addEventListener('resize', () => {
+    startSakura();
   }, { passive:true });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) cancelAnimationFrame(rafId);
-    else tick();
+    if (document.hidden) stopp();
+    else startSakura();
   });
 
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><g fill="#f58da0" stroke="#d85f77" stroke-width="0.8" stroke-linejoin="round"><path d="M20 20C11 17 8 10 13 6c5-4 11 5 7 14Z"/><path d="M20 20c-6-7-4-15 2-15s8 10-2 15Z"/><path d="M20 20c6-7 14-7 15-1s-10 8-15 1Z"/><path d="M20 20c7 5 6 14 0 15s-7-10 0-15Z"/><path d="M20 20c-8 4-15 1-14-5s11-3 14 5Z"/></g><circle cx="20" cy="20" r="3.2" fill="#ffd37a"/><circle cx="20" cy="20" r="1.4" fill="#b84b54"/></svg>';
-  img.onload = () => {
-    resize();
-    createSakuras();
-    tick();
-  };
+  img.onload = startSakura;
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 })();
 
