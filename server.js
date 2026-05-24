@@ -22,7 +22,18 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' }, pingTimeout: 60000 });
 
 app.use(express.json({ limit: '128kb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  // 立绘/PNG/JPG 等静态资源浏览器缓存 30 天, HTML 不缓存
+  maxAge: '30d',
+  etag: true,
+  setHeaders(res, filePath) {
+    if (/\.html?$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache');
+    } else if (/\.(png|jpe?g|webp|gif|svg|ico)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    }
+  },
+}));
 
 const PORT = process.env.PORT || 3000;
 

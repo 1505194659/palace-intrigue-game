@@ -180,10 +180,13 @@ extraHTML +
     function head(url) {
       return fetch(url, { method: 'HEAD' }).then(function (r) { return r.ok; }).catch(function () { return false; });
     }
-    return head('portraits/default.png').then(function (ok) {
+    return head('portraits/default.jpg').then(function (ok) {
       if (ok) { window.PORTRAIT_MODE = 'single'; return; }
-      return head('portraits/sheet.png').then(function (ok2) {
-        if (ok2) window.PORTRAIT_MODE = 'sprite';
+      return head('portraits/default.png').then(function (ok2) {
+        if (ok2) { window.PORTRAIT_MODE = 'single'; return; }
+        return head('portraits/sheet.png').then(function (ok3) {
+          if (ok3) window.PORTRAIT_MODE = 'sprite';
+        });
       });
     });
   })();
@@ -217,7 +220,8 @@ extraHTML +
     }
 
     if (mode === 'single') {
-      var imgUrl = 'portraits/' + id + '.png';
+      // 优先用压缩 JPG（~45KB），如果 404 浏览器会显示空，PNG fallback 由 onerror 切回
+      var imgUrl = 'portraits/' + id + '.jpg';
       var imgStyle = 'width:100%;height:100%;object-fit:cover;border-radius:4px;';
       if (opts.headOnly) {
         // 头像聚焦：按每张图的人脸坐标定位 + 放大
@@ -227,8 +231,12 @@ extraHTML +
           'transform:scale(' + f.s + ');' +
           'transform-origin:' + f.x + '% ' + f.y + '%;';
       }
+      // JPG 加载失败时自动回退到 PNG（兼容旧服务器）
+      var fallback = 'this.onerror=null;this.src=\'portraits/' + id + '.png\'';
       return '<div class="portrait" style="' + sizeStyle + '">' +
-        '<img class="portrait-img" src="' + imgUrl + '" alt="" style="' + imgStyle + '"/>' +
+        '<img class="portrait-img" src="' + imgUrl + '" alt="" loading="lazy" '
+          + 'onerror="' + fallback + '" '
+          + 'style="' + imgStyle + '"/>' +
         (opts.headOnly ? '' :
           '<span class="petal p1">🌸</span><span class="petal p2">🌸</span><span class="petal p3">🌸</span>') +
         '</div>';
