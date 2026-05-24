@@ -118,16 +118,35 @@
     padding:10px; margin-bottom:12px;
     border:1px solid rgba(139,106,61,0.7); border-radius:8px;
     background:
-      linear-gradient(180deg, rgba(255,248,231,0.70), rgba(240,226,199,0.82)),
-      url("ui/game-brocade-bg.jpg") center / cover no-repeat;
+      linear-gradient(180deg, rgba(255,248,231,0.62), rgba(240,226,199,0.78)),
+      url("ui/game-palace-bg.jpg") center / cover no-repeat;
     box-shadow:0 8px 22px rgba(80,40,20,0.20), inset 0 0 0 1px rgba(255,255,255,0.45);
     overflow:hidden;
   }
   #screen-game::before {
-    content:""; position:absolute; inset:0; pointer-events:none; z-index:-1;
-    background:linear-gradient(90deg, rgba(255,248,231,0.28), transparent 18%, transparent 82%, rgba(255,248,231,0.28));
+    content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background:
+      linear-gradient(90deg, rgba(255,248,231,0.30), transparent 18%, transparent 82%, rgba(255,248,231,0.30)),
+      radial-gradient(circle at 50% 0%, rgba(255,220,150,0.22), transparent 36%);
+  }
+  #screen-game::after {
+    content:""; position:absolute; inset:-12% -6%; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(ellipse at center, rgba(235,88,118,0.38) 0 34%, transparent 36%),
+      radial-gradient(ellipse at center, rgba(255,151,166,0.32) 0 32%, transparent 35%),
+      radial-gradient(ellipse at center, rgba(214,72,103,0.26) 0 28%, transparent 32%),
+      radial-gradient(ellipse at center, rgba(255,190,196,0.32) 0 30%, transparent 34%);
+    background-size:26px 16px, 20px 12px, 18px 11px, 22px 13px;
+    background-position:8% 18%, 77% 8%, 18% 82%, 91% 72%;
+    background-repeat:no-repeat;
+    opacity:0.70;
+    animation: palace-petals 11s ease-in-out infinite alternate;
   }
   #screen-game > * { position:relative; z-index:1; }
+  @keyframes palace-petals {
+    from { transform:translate3d(-4px,-2px,0) rotate(-1deg); opacity:0.48; }
+    to   { transform:translate3d(8px,12px,0) rotate(4deg); opacity:0.76; }
+  }
   .turn-bar {
     display:flex; justify-content:space-between; align-items:center;
     padding:10px 14px; margin-bottom:10px;
@@ -135,12 +154,26 @@
     border:1px solid rgba(255,210,120,0.38);
     box-shadow:0 3px 8px rgba(59,13,13,0.24);
     font-size:14px; letter-spacing:0.15em;
+    position:relative; overflow:hidden;
   }
+  .turn-bar::after {
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(110deg, transparent 0 38%, rgba(255,235,175,0.22) 48%, transparent 58% 100%);
+    transform:translateX(-130%);
+    animation: palace-sheen 5.8s ease-in-out infinite;
+  }
+  @keyframes palace-sheen { 0%,45% { transform:translateX(-130%); } 70%,100% { transform:translateX(130%); } }
   .turn-bar .turn-num { font-size:18px; font-weight:bold; color:#ffd278; }
 
   .players { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .pcard { background:rgba(255,248,231,0.88); border:1px solid rgba(139,106,61,0.78); border-radius:8px;
-           padding:12px 10px 9px; box-shadow:0 4px 12px rgba(80,40,20,0.16), inset 0 0 0 1px rgba(255,255,255,0.45); }
+           padding:12px 10px 9px; box-shadow:0 4px 12px rgba(80,40,20,0.16), inset 0 0 0 1px rgba(255,255,255,0.45);
+           position:relative; overflow:hidden; }
+  .pcard::before {
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(135deg, rgba(255,255,255,0.28), transparent 34%, rgba(255,206,134,0.10));
+    opacity:0.7;
+  }
   .pcard.you { border-color:rgba(139,26,26,0.72); }
   .pcard h3 { margin:0 0 6px; font-size:13px; letter-spacing:0.18em; color:var(--red-deep);
               display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:4px; }
@@ -198,6 +231,11 @@
              box-shadow:0 2px 0 rgba(139,106,61,0.32), inset 0 0 0 1px rgba(255,255,255,0.45); transition:transform 0.08s ease, box-shadow 0.12s ease, border-color 0.12s ease; }
   .act-btn:active:not(:disabled){ transform:translateY(1px); }
   .act-btn:not(:disabled):hover { border-color:rgba(184,134,42,0.95); box-shadow:0 4px 10px rgba(80,40,20,0.16), inset 0 0 0 1px rgba(255,255,255,0.55); }
+  .act-btn:not(:disabled) { animation: action-breathe 4.8s ease-in-out infinite; }
+  @keyframes action-breathe {
+    0%,100% { box-shadow:0 2px 0 rgba(139,106,61,0.32), inset 0 0 0 1px rgba(255,255,255,0.45); }
+    50% { box-shadow:0 3px 8px rgba(184,134,42,0.18), inset 0 0 0 1px rgba(255,255,255,0.60); }
+  }
   .act-btn .em { font-size:24px; margin-bottom:5px; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
                  border-radius:50%; background:rgba(255,248,231,0.62); border:1px solid rgba(184,134,42,0.38); }
   .act-btn .lbl { font-size:13px; letter-spacing:0.1em; }
@@ -213,6 +251,9 @@
   .ready-row .dot { display:inline-block; width:8px; height:8px; border-radius:50%;
                     background:#c9b07a; margin-right:5px; vertical-align:middle; }
   .ready-row .dot.ok { background:#5a8c3a; box-shadow:0 0 4px #5a8c3a; }
+  @media (prefers-reduced-motion: reduce) {
+    #screen-game::after, .turn-bar::after, .act-btn:not(:disabled) { animation:none; }
+  }
 
   /* 卡牌手牌区 */
   .hand-wrap { background:rgba(255,248,231,0.82); border:1px solid rgba(139,106,61,0.68); border-radius:8px;
@@ -788,7 +829,7 @@
 </audio>
 <button class="bgm-btn" id="bgm-btn" type="button" title="背景音乐" hidden>🔇</button>
 
-<script src="portraits.js?v=42"></script>
+<script src="portraits.js?v=44"></script>
 <script src="/socket.io/socket.io.js"></script><script>
 const ACTION_DEFS = [
   { id: 'serve',         em: '🌹', label: '侍寝',   tip: '消耗 25 体力，依美貌+才艺获取圣宠' },
