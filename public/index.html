@@ -18,21 +18,47 @@
     margin: 0; padding: 0; min-height: 100%;
     font-family: "Noto Serif SC","Songti SC","STSong","SimSun",serif;
     color: var(--ink);
-    background: radial-gradient(circle at 20% 0%, rgba(139,26,26,0.08), transparent 50%),
-                radial-gradient(circle at 80% 100%, rgba(184,134,42,0.12), transparent 50%),
-                var(--bg);
+    background:
+      linear-gradient(180deg, rgba(255,249,238,0.18), rgba(246,226,204,0.18)),
+      url("ui/page-palace-bg.png") center top / cover fixed no-repeat,
+      #f6dfc6;
     background-attachment: fixed;
     overflow-x: hidden;
     -webkit-text-size-adjust: 100%;
   }
   body::before {
     content:""; position:fixed; inset:0; pointer-events:none;
-    background-image:
-      repeating-linear-gradient(45deg, rgba(139,106,61,0.04) 0 1px, transparent 1px 12px),
-      repeating-linear-gradient(-45deg, rgba(139,106,61,0.04) 0 1px, transparent 1px 12px);
+    background:
+      radial-gradient(circle at 50% 18%, rgba(255,252,243,0.44), transparent 36%),
+      linear-gradient(90deg, rgba(111,48,32,0.10), transparent 16%, transparent 84%, rgba(111,48,32,0.10));
     z-index:0;
   }
-  #app { position:relative; z-index:1; max-width:760px; margin:0 auto; padding:14px 12px 28px; min-height:100%; }
+  #sakura-canvas {
+    position:fixed; inset:0; width:100vw; height:100vh;
+    pointer-events:none; z-index:1; opacity:0.78;
+  }
+  .palace-lantern {
+    position:fixed; top:18px; width:78px; height:auto;
+    pointer-events:none; z-index:2; filter:drop-shadow(0 10px 14px rgba(95,31,22,0.18));
+    transform-origin:50% 0%;
+  }
+  .palace-lantern.left {
+    left:max(18px, calc(50vw - 585px));
+    animation: lantern-swing-left 5.8s ease-in-out infinite alternate;
+  }
+  .palace-lantern.right {
+    right:max(18px, calc(50vw - 585px));
+    animation: lantern-swing-right 6.4s ease-in-out infinite alternate;
+  }
+  @keyframes lantern-swing-left {
+    from { transform:rotate(-3.5deg) translateY(0); }
+    to   { transform:rotate(3.5deg) translateY(6px); }
+  }
+  @keyframes lantern-swing-right {
+    from { transform:scaleX(-1) rotate(3deg) translateY(4px); }
+    to   { transform:scaleX(-1) rotate(-3deg) translateY(0); }
+  }
+  #app { position:relative; z-index:3; max-width:760px; margin:0 auto; padding:14px 12px 28px; min-height:100%; }
   h1.title { text-align:center; font-size:30px; letter-spacing:0.4em; margin:14px 0 4px; color:var(--red-deep); text-shadow:0 2px 0 rgba(139,106,61,0.2); }
   .subtitle { text-align:center; color:var(--ink-soft); font-size:13px; letter-spacing:0.3em; margin-bottom:18px; }
 
@@ -262,7 +288,8 @@
                     background:#c9b07a; margin-right:5px; vertical-align:middle; }
   .ready-row .dot.ok { background:#5a8c3a; box-shadow:0 0 4px #5a8c3a; }
   @media (prefers-reduced-motion: reduce) {
-    #screen-game::after, .turn-bar::after, .act-btn:not(:disabled) { animation:none; }
+    #screen-game::after, .turn-bar::after, .act-btn:not(:disabled), .palace-lantern { animation:none; }
+    #sakura-canvas { display:none; }
   }
 
   /* 卡牌手牌区 */
@@ -673,6 +700,9 @@
 </style>
 </head>
 <body>
+<canvas id="sakura-canvas" aria-hidden="true"></canvas>
+<img class="palace-lantern left" src="ui/palace-lantern.png" alt="" aria-hidden="true" />
+<img class="palace-lantern right" src="ui/palace-lantern.png" alt="" aria-hidden="true" />
 <div id="app">
   <h1 class="title">后&nbsp;宫&nbsp;风&nbsp;云</h1>
   <div class="subtitle">— 双 人 联 机 v3.1 —</div>
@@ -1575,6 +1605,96 @@ function setMiniPortrait(elId, classId) {
   if (window.portraitsReady) window.portraitsReady.then(draw);
   else draw();
 }
+
+// ============== Canvas sakura fall ==============
+(function setupSakuraFall() {
+  const canvas = document.getElementById('sakura-canvas');
+  if (!canvas || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cxt = canvas.getContext('2d');
+  const img = new Image();
+  const sakuraNum = 21;
+  const limitTimes = 2;
+  const limitArray = new Array(sakuraNum).fill(limitTimes);
+  let sakuras = [];
+  let rafId = 0;
+  let dpr = 1;
+
+  function Sakura(x, y, s, r, fn, idx) {
+    this.x = x; this.y = y; this.s = s; this.r = r; this.fn = fn; this.idx = idx;
+  }
+  Sakura.prototype.draw = function draw(cxt) {
+    cxt.save();
+    cxt.translate(this.x, this.y);
+    cxt.rotate(this.r);
+    cxt.drawImage(img, -20 * this.s, -20 * this.s, 40 * this.s, 40 * this.s);
+    cxt.restore();
+  };
+  Sakura.prototype.update = function update() {
+    this.x = this.fn.x(this.x, this.y);
+    this.y = this.fn.y(this.y, this.y);
+    this.r = this.fn.r(this.r);
+    if (this.x > window.innerWidth + 60 || this.x < -60 || this.y > window.innerHeight + 60 || this.y < -60) {
+      if (limitArray[this.idx] === -1 || limitArray[this.idx] > 0) {
+        if (limitArray[this.idx] > 0) limitArray[this.idx]--;
+        this.x = Math.random() * window.innerWidth;
+        this.y = -20 - Math.random() * 80;
+      }
+    }
+  };
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.ceil(window.innerWidth * dpr);
+    canvas.height = Math.ceil(window.innerHeight * dpr);
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    cxt.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function createSakuras() {
+    sakuras = [];
+    for (let i = 0; i < sakuraNum; i++) {
+      const drift = 0.35 + Math.random() * 0.65;
+      const fall = 0.45 + Math.random() * 0.75;
+      const wave = Math.random() * Math.PI * 2;
+      sakuras.push(new Sakura(
+        Math.random() * window.innerWidth,
+        Math.random() * window.innerHeight,
+        0.34 + Math.random() * 0.50,
+        Math.random() * Math.PI,
+        {
+          x: (x, y) => x + Math.sin((y * 0.012) + wave) * drift + 0.18,
+          y: (y) => y + fall,
+          r: (r) => r + 0.006 + Math.random() * 0.004
+        },
+        i
+      ));
+    }
+  }
+  function tick() {
+    cxt.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    for (const sakura of sakuras) {
+      sakura.update();
+      sakura.draw(cxt);
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+  window.addEventListener('resize', () => {
+    resize();
+    createSakuras();
+  }, { passive:true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(rafId);
+    else tick();
+  });
+
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><g fill="#f58da0" stroke="#d85f77" stroke-width="0.8" stroke-linejoin="round"><path d="M20 20C11 17 8 10 13 6c5-4 11 5 7 14Z"/><path d="M20 20c-6-7-4-15 2-15s8 10-2 15Z"/><path d="M20 20c6-7 14-7 15-1s-10 8-15 1Z"/><path d="M20 20c7 5 6 14 0 15s-7-10 0-15Z"/><path d="M20 20c-8 4-15 1-14-5s11-3 14 5Z"/></g><circle cx="20" cy="20" r="3.2" fill="#ffd37a"/><circle cx="20" cy="20" r="1.4" fill="#b84b54"/></svg>';
+  img.onload = () => {
+    resize();
+    createSakuras();
+    tick();
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+})();
 
 // ============== 背景音乐 ==============
 (function setupBgm() {
