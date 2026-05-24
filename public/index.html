@@ -334,28 +334,22 @@
   .class-card { gap:4px; padding:8px 6px; }
   .class-card .portrait-wrap { width:60px; height:84px; margin-bottom:2px; display:block; }
   .class-card .portrait-wrap .portrait { width:100%; height:100%; }
-  /* 真立绘条形模式：高条卡片 */
-  body[data-portrait-mode="sprite"] .class-card,
-  body[data-portrait-mode="single"] .class-card { min-height:240px; }
-  body[data-portrait-mode="sprite"] .class-card .portrait-wrap,
-  body[data-portrait-mode="single"] .class-card .portrait-wrap { width:54px; height:216px; }
+  /* single 模式（6 张独立 5:7 PNG）：稍微高一点的紧凑卡片 */
+  body[data-portrait-mode="single"] .class-card .portrait-wrap { width:64px; height:90px; }
+
+  /* sprite 模式（1 张大整版图）：高条卡片 */
+  body[data-portrait-mode="sprite"] .class-card { min-height:240px; }
+  body[data-portrait-mode="sprite"] .class-card .portrait-wrap { width:54px; height:216px; }
   @media (max-width:420px) {
-    body[data-portrait-mode="sprite"] .class-grid,
-    body[data-portrait-mode="single"] .class-grid { grid-template-columns:repeat(3,1fr); gap:6px; }
-    body[data-portrait-mode="sprite"] .class-card,
-    body[data-portrait-mode="single"] .class-card { min-height:210px; }
-    body[data-portrait-mode="sprite"] .class-card .portrait-wrap,
-    body[data-portrait-mode="single"] .class-card .portrait-wrap { width:46px; height:184px; }
+    body[data-portrait-mode="sprite"] .class-grid { grid-template-columns:repeat(3,1fr); gap:6px; }
+    body[data-portrait-mode="sprite"] .class-card { min-height:210px; }
+    body[data-portrait-mode="sprite"] .class-card .portrait-wrap { width:46px; height:184px; }
   }
   @media (max-width:360px) {
-    body[data-portrait-mode="sprite"] .class-card,
-    body[data-portrait-mode="single"] .class-card { min-height:190px; }
-    body[data-portrait-mode="sprite"] .class-card .portrait-wrap,
-    body[data-portrait-mode="single"] .class-card .portrait-wrap { width:40px; height:160px; }
-    body[data-portrait-mode="sprite"] .class-card .name,
-    body[data-portrait-mode="single"] .class-card .name { font-size:12px; }
-    body[data-portrait-mode="sprite"] .class-card .desc,
-    body[data-portrait-mode="single"] .class-card .desc { font-size:10px; }
+    body[data-portrait-mode="sprite"] .class-card { min-height:190px; }
+    body[data-portrait-mode="sprite"] .class-card .portrait-wrap { width:40px; height:160px; }
+    body[data-portrait-mode="sprite"] .class-card .name { font-size:12px; }
+    body[data-portrait-mode="sprite"] .class-card .desc { font-size:10px; }
   }
 
   /* pcard 角落小立绘（保持 1:1.7 视窗比例，避免太占位） */

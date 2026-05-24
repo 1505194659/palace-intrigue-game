@@ -155,6 +155,8 @@ extraHTML +
   // height-to-width ratio of one column in the sheet.
   // The 6-girl AI sheet (~1024x682) gives each column ~1:4. Tune as needed.
   var SPRITE_RATIO = 4.0;
+  // height-to-width ratio for individual per-class PNGs (recommended 5:7 = 1.4).
+  var SINGLE_RATIO = 1.4;
 
   // Mode detection: 'sprite' (sheet.png) > 'single' (default.png) > 'svg'
   window.PORTRAIT_MODE = 'svg';
@@ -182,8 +184,10 @@ extraHTML +
     var fill = !!opts.fillParent;
     size = size || 64;
     var mode = window.PORTRAIT_MODE || 'svg';
+    var defaultRatio = mode === 'sprite' ? SPRITE_RATIO :
+                       mode === 'single' ? SINGLE_RATIO : 1.4;
     var sizeStyle = fill ? 'width:100%;height:100%;' :
-      ('width:' + size + 'px;height:' + Math.round(size * SPRITE_RATIO) + 'px;');
+      ('width:' + size + 'px;height:' + Math.round(size * defaultRatio) + 'px;');
 
     if (mode === 'sprite') {
       var colIdx = SPRITE_INDEX[id] != null ? SPRITE_INDEX[id] : 0;
