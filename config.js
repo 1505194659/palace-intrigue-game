@@ -20,17 +20,47 @@ function deepClone(o) {
   return JSON.parse(JSON.stringify(o));
 }
 
-function load() {
-  let raw;
-  if (fs.existsSync(RUNTIME_PATH)) {
-    raw = fs.readFileSync(RUNTIME_PATH, 'utf8');
-  } else {
-    // 首次启动：从 default 复制一份
-    raw = fs.readFileSync(DEFAULT_PATH, 'utf8');
-    fs.writeFileSync(RUNTIME_PATH, raw, 'utf8');
-    console.log('[config] 已从 config.default.json 初始化 config.json');
+/** default 打底，runtime 覆盖；缺字段自动从 default 补全（版本升级友好） */
+function deepMerge(base, override) {
+  if (override === undefined || override === null) return deepClone(base);
+  if (base === undefined || base === null) return deepClone(override);
+  if (Array.isArray(base) || Array.isArray(override)) {
+    return deepClone(Array.isArray(override) ? override : base);
   }
-  cached = JSON.parse(raw);
+  if (typeof base !== 'object' || typeof override !== 'object') {
+    return override !== undefined ? deepClone(override) : deepClone(base);
+  }
+  const out = deepClone(base);
+  for (const key of Object.keys(override)) {
+    const b = base[key];
+    const o = override[key];
+    if (o !== null && typeof o === 'object' && !Array.isArray(o)
+        && b !== null && typeof b === 'object' && !Array.isArray(b)) {
+      out[key] = deepMerge(b, o);
+    } else {
+      out[key] = deepClone(o);
+    }
+  }
+  return out;
+}
+
+function load() {
+  const defaults = JSON.parse(fs.readFileSync(DEFAULT_PATH, 'utf8'));
+  if (!fs.existsSync(RUNTIME_PATH)) {
+    fs.writeFileSync(RUNTIME_PATH, JSON.stringify(defaults, null, 2), 'utf8');
+    console.log('[config] 已从 config.default.json 初始化 config.json');
+    cached = defaults;
+    return cached;
+  }
+  const runtime = JSON.parse(fs.readFileSync(RUNTIME_PATH, 'utf8'));
+  const merged = deepMerge(defaults, runtime);
+  const runtimeRaw = JSON.stringify(runtime, null, 2);
+  const mergedRaw = JSON.stringify(merged, null, 2);
+  if (mergedRaw !== runtimeRaw) {
+    fs.writeFileSync(RUNTIME_PATH, mergedRaw, 'utf8');
+    console.log('[config] 已从 config.default.json 补全缺失字段（保留已有自定义项）');
+  }
+  cached = merged;
   return cached;
 }
 

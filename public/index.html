@@ -272,6 +272,53 @@
     .act-btn { min-height:58px; padding:10px 2px; }
     .act-btn .em { font-size:18px; }
   }
+
+  /* === 立绘 === */
+  .portrait { position:relative; display:inline-block; overflow:visible; }
+  .portrait-svg { width:100%; height:100%; display:block; filter:drop-shadow(0 2px 3px rgba(60,30,10,0.18)); }
+  /* 摇曳动画：头/发饰/飘带 各异频率 */
+  .portrait-svg .p-head { transform-origin: 50px 70px; animation: p-sway 4.5s ease-in-out infinite alternate; }
+  .portrait-svg .p-robe { transform-origin: 50px 88px; animation: p-robe-sway 5s ease-in-out infinite alternate; }
+  .portrait-svg .p-sash { animation: p-sash-flutter 3.2s ease-in-out infinite alternate; transform-origin: 50px 100px; }
+  .portrait-svg .p-hairpin { animation: p-pin-sway 3.7s ease-in-out infinite alternate; transform-origin: 50px 30px; }
+  .portrait-svg .p-prop { transform-origin: 80px 100px; animation: p-prop-sway 5.2s ease-in-out infinite alternate; }
+  .portrait-svg .p-eye { animation: p-blink 4.8s ease-in-out infinite; transform-origin: center; }
+  @keyframes p-sway { from { transform: rotate(-1.8deg); } to { transform: rotate(1.8deg); } }
+  @keyframes p-robe-sway { from { transform: skewX(-0.6deg); } to { transform: skewX(0.6deg); } }
+  @keyframes p-sash-flutter { from { transform: translateY(0) skewX(-3deg); } to { transform: translateY(-1px) skewX(3deg); } }
+  @keyframes p-pin-sway { from { transform: rotate(-2deg) translateY(0); } to { transform: rotate(2deg) translateY(-0.5px); } }
+  @keyframes p-prop-sway { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+  @keyframes p-blink { 0%,92%,100% { transform: scaleY(1); } 95%,97% { transform: scaleY(0.1); } }
+  /* 选中态时把动画放快一档 */
+  .class-card.selected .portrait-svg .p-head { animation-duration: 2.6s; }
+  .class-card.selected .portrait-svg .p-sash { animation-duration: 1.8s; }
+
+  /* 职业卡片改成立绘版式 */
+  .class-card .portrait { width:60px; height:84px; margin-bottom:2px; }
+  @media (max-width:360px) { .class-card .portrait { width:50px; height:70px; } }
+
+  /* pcard 角落小立绘 */
+  .pcard { position:relative; }
+  .pcard .mini-portrait { position:absolute; right:6px; top:6px; width:42px; height:60px; opacity:0.92; pointer-events:none; }
+  .pcard h3 { padding-right:50px; }
+
+  /* === BGM 浮动按钮 === */
+  .bgm-btn {
+    position:fixed; right:14px; bottom:14px; z-index:150;
+    width:44px; height:44px; border-radius:50%; cursor:pointer;
+    background:linear-gradient(180deg,#8b1a1a,#5b1a1a); color:#fbe9c2;
+    border:1px solid var(--gold); box-shadow:0 3px 10px rgba(0,0,0,0.35);
+    font-size:20px; display:flex; align-items:center; justify-content:center;
+    transition:transform 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .bgm-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.45); }
+  .bgm-btn.playing { animation: bgm-pulse 2.4s ease-in-out infinite; }
+  @keyframes bgm-pulse {
+    0%,100% { box-shadow:0 3px 10px rgba(0,0,0,0.35), 0 0 0 0 rgba(255,210,120,0.6); }
+    50%     { box-shadow:0 3px 10px rgba(0,0,0,0.35), 0 0 0 8px rgba(255,210,120,0); }
+  }
+  .bgm-btn[hidden] { display:none; }
 </style>
 </head>
 <body>
@@ -327,6 +374,7 @@
 
     <div class="players">
       <div class="pcard you">
+        <div class="mini-portrait" id="you-portrait"></div>
         <h3><span id="you-name">你</span><span class="cls-tag" id="you-cls">—</span></h3>
         <div style="margin-bottom:6px"><span class="rank-badge" id="you-rank">答应</span></div>
         <div class="stat"><span class="lbl">圣宠</span><span class="bar fav"><span id="you-favor-bar"></span></span><span class="v" id="you-favor">0</span></div>
@@ -339,6 +387,7 @@
         <div class="extras" id="you-extras"></div>
       </div>
       <div class="pcard">
+        <div class="mini-portrait" id="op-portrait"></div>
         <h3><span id="op-name">对手</span><span class="cls-tag" id="op-cls">—</span></h3>
         <div style="margin-bottom:6px"><span class="rank-badge" id="op-rank">答应</span></div>
         <div class="stat"><span class="lbl">圣宠</span><span class="bar fav"><span id="op-favor-bar"></span></span><span class="v" id="op-favor">0</span></div>
@@ -425,6 +474,14 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- 背景音乐：把 mp3 / ogg 放到 public/bgm/main.mp3 即生效（默认静音，点按钮开） -->
+<audio id="bgm" loop preload="auto">
+  <source src="bgm/main.mp3" type="audio/mpeg" />
+  <source src="bgm/main.ogg" type="audio/ogg" />
+</audio>
+<button class="bgm-btn" id="bgm-btn" type="button" title="背景音乐" hidden>🔇</button>
+
+<script src="portraits.js?v=31"></script>
 <script src="/socket.io/socket.io.js"></script><script>
 const ACTION_DEFS = [
   { id: 'serve',         em: '🌹', label: '侍寝',   tip: '消耗 25 体力，依美貌+才艺获取圣宠' },
@@ -497,10 +554,14 @@ function renderClassGrid() {
   const grid = $('class-grid');
   if (!META.classes.length) return;
   grid.innerHTML = '';
+  const hasPortraits = typeof window.renderPortrait === 'function';
   for (const c of META.classes) {
     const card = document.createElement('div');
     card.className = 'class-card' + (c.id === selectedClass ? ' selected' : '');
-    card.innerHTML = `<span class="icon">${c.icon || '🎭'}</span><span class="name">${c.name}</span><span class="desc">${c.description || ''}</span>`;
+    const head = hasPortraits
+      ? window.renderPortrait(c.id, 60)
+      : `<span class="icon">${c.icon || '🎭'}</span>`;
+    card.innerHTML = `${head}<span class="name">${c.name}</span><span class="desc">${c.description || ''}</span>`;
     card.onclick = () => {
       selectedClass = c.id;
       grid.querySelectorAll('.class-card').forEach((x) => x.classList.remove('selected'));
@@ -638,6 +699,7 @@ function renderState(s) {
     $('you-name').textContent = s.you.name;
     $('you-cls').textContent = classLabel(s.you.classId);
     $('you-rank').textContent = s.you.rankName;
+    setMiniPortrait('you-portrait', s.you.classId);
     $('you-favor').textContent = s.you.favor;
     $('you-power').textContent = s.you.power;
     $('you-rep').textContent = s.you.reputation ?? 0;
@@ -656,6 +718,7 @@ function renderState(s) {
     $('op-name').textContent = s.opponent.name;
     $('op-cls').textContent = classLabel(s.opponent.classId);
     $('op-rank').textContent = s.opponent.rankName;
+    setMiniPortrait('op-portrait', s.opponent.classId);
     $('op-favor').textContent = s.opponent.favor;
     $('op-power').textContent = s.opponent.power;
     $('op-rep').textContent = s.opponent.reputation ?? 0;
@@ -1038,6 +1101,56 @@ $('btn-rematch').onclick = () => {
   socket.emit('rematch', { classId: selectedClass });
 };
 $('g-btn-rematch').onclick = () => { lastGLogTotal = -1; socket.emit('rematch'); };
+
+// ============== 立绘工具 ==============
+function setMiniPortrait(elId, classId) {
+  if (typeof window.renderPortrait !== 'function') return;
+  const el = $(elId);
+  if (!el) return;
+  if (el.dataset.cls === classId) return; // 避免重复渲染（保留动画）
+  el.dataset.cls = classId || 'default';
+  el.innerHTML = window.renderPortrait(classId, 42);
+}
+
+// ============== 背景音乐 ==============
+(function setupBgm() {
+  const btn = $('bgm-btn');
+  const audio = $('bgm');
+  if (!btn || !audio) return;
+  audio.volume = 0.32;
+  // 探测资源是否存在；不存在则不显示按钮
+  fetch('bgm/main.mp3', { method: 'HEAD' })
+    .then((r) => {
+      if (!r.ok) throw new Error('no bgm');
+      btn.hidden = false;
+      const muted = localStorage.getItem('bgm_muted') !== 'false'; // 默认静音
+      if (!muted) {
+        // 浏览器要求首次用户交互才能播放——这里只是预备状态
+        btn.textContent = '🎵';
+        btn.classList.add('playing');
+        audio.play().catch(() => {
+          btn.textContent = '🔇';
+          btn.classList.remove('playing');
+        });
+      }
+    })
+    .catch(() => { btn.hidden = true; });
+
+  btn.onclick = () => {
+    if (audio.paused) {
+      audio.play().then(() => {
+        btn.textContent = '🎵';
+        btn.classList.add('playing');
+        localStorage.setItem('bgm_muted', 'false');
+      }).catch(() => showToast('播放失败，请检查 bgm/main.mp3'));
+    } else {
+      audio.pause();
+      btn.textContent = '🔇';
+      btn.classList.remove('playing');
+      localStorage.setItem('bgm_muted', 'true');
+    }
+  };
+})();
 </script>
 </body>
 </html>

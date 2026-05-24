@@ -27,13 +27,22 @@ node --version || { echo "  ✗ 没装 Node"; exit 1; }
 echo "[2/8] 安装依赖 ..."
 npm install --production --registry=https://registry.npmmirror.com --silent 2>&1 | tail -5
 
-echo "[3/8] 初始化 config.json（如不存在） ..."
+echo "[3/8] 初始化 / 补全 config.json ..."
 if [ ! -f "config.json" ]; then
   cp config.default.json config.json
   echo "  -> 已从 config.default.json 创建 config.json"
   echo "  ⚠️  请记得登录 /admin.html 修改 adminToken（默认 CHANGE_ME_NOW）"
 else
-  echo "  -> config.json 已存在，保留运行时配置不动"
+  node -e "require('./config').load()" > /tmp/palace-config.log 2>&1 || {
+    echo "  ✗ config 合并失败"
+    cat /tmp/palace-config.log
+    exit 1
+  }
+  if grep -q "补全缺失字段" /tmp/palace-config.log 2>/dev/null; then
+    echo "  -> config.json 已补全 v3.1 新字段（皇帝名等自定义项保留）"
+  else
+    echo "  -> config.json 已存在，字段完整"
+  fi
 fi
 
 echo "[4/8] 跑核心测试 ..."

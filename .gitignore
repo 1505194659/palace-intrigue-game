@@ -26,3 +26,6 @@ palace-intrigue-game.bak.*
 
 # 运行时配置（每个部署各自维护，从 config.default.json 初始化）
 config.json
+
+# 提交消息草稿
+_commitmsg.txt
