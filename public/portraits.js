@@ -147,6 +147,21 @@ extraHTML +
 
   window.PORTRAITS = PORTRAITS;
 
+  // ============================================================
+  // 头像焦点配置（仅 single 模式有效）
+  // 每张大卡 500×439。人脸大致 x 百分比（图自身宽度的 0~100）
+  // 由 mini-portrait 在 pcard 里取头部时用 object-position + scale
+  // ============================================================
+  var FOCUS = {
+    'default':    { x: 58, y: 32, s: 2.4 }, // 良家：人物中央偏右
+    talent:       { x: 70, y: 28, s: 2.4 }, // 才女：人物偏右
+    seductress:   { x: 40, y: 32, s: 2.4 }, // 妖姬：人物偏左
+    schemer:      { x: 70, y: 28, s: 2.4 }, // 心机：人物偏右
+    noble:        { x: 38, y: 32, s: 2.4 }, // 嫡女：人物偏左
+    healer:       { x: 60, y: 30, s: 2.4 }  // 神医：人物中央偏右
+  };
+  window.PORTRAIT_FOCUS = FOCUS;
+
   // class id -> sprite column index in sheet.png (0-based, left to right)
   var SPRITE_INDEX = {
     'default': 0, talent: 1, seductress: 2, schemer: 3, noble: 4, healer: 5
@@ -203,9 +218,19 @@ extraHTML +
 
     if (mode === 'single') {
       var imgUrl = 'portraits/' + id + '.png';
+      var imgStyle = 'width:100%;height:100%;object-fit:cover;border-radius:4px;';
+      if (opts.headOnly) {
+        // 头像聚焦：按每张图的人脸坐标定位 + 放大
+        var f = FOCUS[id] || { x: 50, y: 30, s: 2.2 };
+        imgStyle = 'width:100%;height:100%;object-fit:cover;border-radius:0;' +
+          'object-position:' + f.x + '% ' + f.y + '%;' +
+          'transform:scale(' + f.s + ');' +
+          'transform-origin:' + f.x + '% ' + f.y + '%;';
+      }
       return '<div class="portrait" style="' + sizeStyle + '">' +
-        '<img class="portrait-img" src="' + imgUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:4px;"/>' +
-        '<span class="petal p1">🌸</span><span class="petal p2">🌸</span><span class="petal p3">🌸</span>' +
+        '<img class="portrait-img" src="' + imgUrl + '" alt="" style="' + imgStyle + '"/>' +
+        (opts.headOnly ? '' :
+          '<span class="petal p1">🌸</span><span class="petal p2">🌸</span><span class="petal p3">🌸</span>') +
         '</div>';
     }
     // svg fallback (1:1.4)

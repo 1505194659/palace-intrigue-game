@@ -452,32 +452,46 @@
   .class-card .portrait-wrap .portrait { width:100%; height:100%; }
   /* single 模式：整版卡片图（名牌+人物+标题+判词都在图里）
      卡片 = 一张完整 AI 卡牌图，铺满无留白，隐藏外层文字 */
+  /* single 模式（每角色单独 PNG）：让卡片完全等于图片，零留白 */
   body[data-portrait-mode="single"] .class-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 640px) {
+    body[data-portrait-mode="single"] .class-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
   }
   body[data-portrait-mode="single"] .class-card {
     padding:0; overflow:hidden;
     align-items:stretch; justify-content:stretch;
     position:relative;
-    aspect-ratio: 547 / 480;  /* 横版卡片比例 */
+    aspect-ratio: 500 / 439;  /* 实际 PNG 比例 */
     min-height:0; gap:0;
+    background:#1a0e0a;  /* 极深底色，万一 cover 有像素差也不显眼 */
+    border:none; border-radius:6px;
+    box-shadow:0 2px 6px rgba(60,30,10,0.2);
   }
   body[data-portrait-mode="single"] .class-card .portrait-wrap {
     width:100%; height:100%; margin:0; display:block;
   }
-  body[data-portrait-mode="single"] .class-card .portrait,
+  body[data-portrait-mode="single"] .class-card .portrait {
+    width:100%; height:100%; border-radius:0;
+  }
   body[data-portrait-mode="single"] .class-card .portrait-img {
     width:100%; height:100%; object-fit:cover; border-radius:0;
-    box-shadow:none;
+    box-shadow:none; display:block;
   }
   body[data-portrait-mode="single"] .class-card .name,
   body[data-portrait-mode="single"] .class-card .desc,
   body[data-portrait-mode="single"] .class-card .petal { display:none; }
-  /* 选中态：内描金边代替整张橙色背景，避免压住图 */
+  /* 选中态：内描金边 + 描红光晕 */
   body[data-portrait-mode="single"] .class-card.selected {
-    background:transparent;
-    box-shadow:inset 0 0 0 3px rgba(212,165,116,0.95), 0 4px 12px rgba(120,40,30,0.25);
+    background:#1a0e0a;
+    box-shadow:inset 0 0 0 3px rgba(255,210,120,0.95),
+               0 0 0 2px rgba(139,26,26,0.6),
+               0 6px 16px rgba(120,40,30,0.35);
   }
 
   /* sprite 模式（1 张大整版图，1:4）：超高条卡片 */
@@ -509,17 +523,10 @@
     background-size: 600% 350%;
     background-position-y: 12%;
   }
-  /* single 模式：图是横版，左半是名牌/描述，右半是人物。
-     头像聚焦右上人物头部 */
+  /* mini-portrait：头像聚焦坐标由 portraits.js 按角色注入 inline style */
   .pcard .mini-portrait .portrait,
   .pcard .mini-portrait .portrait-img {
     width:100%; height:100%; border-radius:0; box-shadow:none;
-  }
-  body[data-portrait-mode="single"] .pcard .mini-portrait .portrait-img {
-    object-fit:cover;
-    object-position: 75% 30%;
-    transform: scale(2.2);
-    transform-origin: 75% 30%;
   }
   .pcard .mini-portrait .petal { display:none; }
 
@@ -709,7 +716,7 @@
 </audio>
 <button class="bgm-btn" id="bgm-btn" type="button" title="背景音乐" hidden>🔇</button>
 
-<script src="portraits.js?v=31"></script>
+<script src="portraits.js?v=36"></script>
 <script src="/socket.io/socket.io.js"></script><script>
 const ACTION_DEFS = [
   { id: 'serve',         em: '🌹', label: '侍寝',   tip: '消耗 25 体力，依美貌+才艺获取圣宠' },
@@ -1405,7 +1412,7 @@ function setMiniPortrait(elId, classId) {
   const cur = classId || 'default';
   if (el.dataset.cls === cur) return; // 避免重复渲染（保留动画）
   el.dataset.cls = cur;
-  const draw = () => { el.innerHTML = window.renderPortrait(classId, 0, { fillParent: true }); };
+  const draw = () => { el.innerHTML = window.renderPortrait(classId, 0, { fillParent: true, headOnly: true }); };
   if (window.portraitsReady) window.portraitsReady.then(draw);
   else draw();
 }
