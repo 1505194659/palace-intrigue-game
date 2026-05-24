@@ -113,26 +113,43 @@
     padding:12px; background:#fff8e7; border:2px dashed var(--line); border-radius:4px; margin:8px 0 12px; }
 
   /* 游戏屏 */
+  #screen-game {
+    position:relative; isolation:isolate;
+    padding:10px; margin-bottom:12px;
+    border:1px solid rgba(139,106,61,0.7); border-radius:8px;
+    background:
+      linear-gradient(180deg, rgba(255,248,231,0.70), rgba(240,226,199,0.82)),
+      url("ui/game-brocade-bg.jpg") center / cover no-repeat;
+    box-shadow:0 8px 22px rgba(80,40,20,0.20), inset 0 0 0 1px rgba(255,255,255,0.45);
+    overflow:hidden;
+  }
+  #screen-game::before {
+    content:""; position:absolute; inset:0; pointer-events:none; z-index:-1;
+    background:linear-gradient(90deg, rgba(255,248,231,0.28), transparent 18%, transparent 82%, rgba(255,248,231,0.28));
+  }
+  #screen-game > * { position:relative; z-index:1; }
   .turn-bar {
     display:flex; justify-content:space-between; align-items:center;
     padding:10px 14px; margin-bottom:10px;
-    background:linear-gradient(180deg,#5b1a1a,#3b0d0d); color:#fbe9c2; border-radius:4px;
+    background:linear-gradient(180deg,rgba(91,26,26,0.96),rgba(59,13,13,0.96)); color:#fbe9c2; border-radius:5px;
+    border:1px solid rgba(255,210,120,0.38);
+    box-shadow:0 3px 8px rgba(59,13,13,0.24);
     font-size:14px; letter-spacing:0.15em;
   }
   .turn-bar .turn-num { font-size:18px; font-weight:bold; color:#ffd278; }
 
-  .players { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .pcard { background:linear-gradient(180deg,#f7ecd1,#ead7b2); border:1px solid var(--line); border-radius:6px;
-           padding:10px 9px 8px; box-shadow:0 2px 6px var(--shadow); }
-  .pcard.you { border-color:var(--red); }
+  .players { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .pcard { background:rgba(255,248,231,0.88); border:1px solid rgba(139,106,61,0.78); border-radius:8px;
+           padding:12px 10px 9px; box-shadow:0 4px 12px rgba(80,40,20,0.16), inset 0 0 0 1px rgba(255,255,255,0.45); }
+  .pcard.you { border-color:rgba(139,26,26,0.72); }
   .pcard h3 { margin:0 0 6px; font-size:13px; letter-spacing:0.18em; color:var(--red-deep);
               display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:4px; }
   .pcard .who { font-size:11px; color:var(--ink-soft); letter-spacing:0.1em; }
   .pcard .cls-tag { display:inline-block; padding:2px 7px; font-size:11px; border-radius:2px;
                     background:rgba(184,134,42,0.18); border:1px solid var(--gold); color:var(--ink-soft); }
-  .rank-badge { display:inline-block; padding:3px 8px; border-radius:2px;
-                background:linear-gradient(180deg,var(--gold),#8c6a1f); color:#fff8e7;
-                font-size:12px; letter-spacing:0.15em; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.3); }
+  .rank-badge { display:inline-block; padding:3px 9px; border-radius:3px;
+                background:linear-gradient(180deg,#d6a84b,#8c6a1f); color:#fff8e7;
+                font-size:12px; letter-spacing:0.15em; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.34), 0 1px 2px rgba(80,40,20,0.14); }
   .stat { font-size:12px; margin:3px 0; color:var(--ink); }
   .stat .lbl { display:inline-block; width:38px; color:var(--ink-soft); }
   .bar { display:inline-block; vertical-align:middle; width:calc(100% - 78px); height:8px;
@@ -174,16 +191,18 @@
 
   .actions { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:12px 0; }
   @media (max-width:480px){ .actions { grid-template-columns:repeat(4,1fr); gap:6px; } }
-  .act-btn { padding:14px 4px; font-size:14px; font-family:inherit; cursor:pointer;
-             background:linear-gradient(180deg,#fff8e7,#ecd9b3); color:var(--ink); border:1px solid var(--line);
-             border-radius:6px; min-height:78px;
+  .act-btn { padding:12px 4px; font-size:14px; font-family:inherit; cursor:pointer;
+             background:linear-gradient(180deg,rgba(255,248,231,0.92),rgba(236,217,179,0.86)); color:var(--ink); border:1px solid rgba(139,106,61,0.68);
+             border-radius:8px; min-height:78px;
              display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.3;
-             box-shadow:0 2px 0 rgba(139,106,61,0.4); transition:transform 0.05s ease; }
+             box-shadow:0 2px 0 rgba(139,106,61,0.32), inset 0 0 0 1px rgba(255,255,255,0.45); transition:transform 0.08s ease, box-shadow 0.12s ease, border-color 0.12s ease; }
   .act-btn:active:not(:disabled){ transform:translateY(1px); }
-  .act-btn .em { font-size:26px; margin-bottom:4px; }
+  .act-btn:not(:disabled):hover { border-color:rgba(184,134,42,0.95); box-shadow:0 4px 10px rgba(80,40,20,0.16), inset 0 0 0 1px rgba(255,255,255,0.55); }
+  .act-btn .em { font-size:24px; margin-bottom:5px; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+                 border-radius:50%; background:rgba(255,248,231,0.62); border:1px solid rgba(184,134,42,0.38); }
   .act-btn .lbl { font-size:13px; letter-spacing:0.1em; }
   .act-btn:disabled { opacity:0.4; }
-  .act-btn.chosen { background:linear-gradient(180deg,var(--red),var(--red-deep)); color:#fbe9c2; border-color:var(--red-deep); }
+  .act-btn.chosen { background:linear-gradient(180deg,var(--red),var(--red-deep)); color:#fbe9c2; border-color:var(--red-deep); box-shadow:0 3px 10px rgba(91,26,26,0.28); }
   @media (max-width:380px){
     .act-btn { min-height:68px; padding:10px 2px; }
     .act-btn .em { font-size:22px; }
@@ -196,8 +215,8 @@
   .ready-row .dot.ok { background:#5a8c3a; box-shadow:0 0 4px #5a8c3a; }
 
   /* 卡牌手牌区 */
-  .hand-wrap { background:linear-gradient(180deg,#f7ecd1,#ead7b2); border:1px solid var(--line); border-radius:5px;
-              padding:8px 10px; margin-bottom:10px; }
+  .hand-wrap { background:rgba(255,248,231,0.82); border:1px solid rgba(139,106,61,0.68); border-radius:8px;
+              padding:9px 11px; margin-bottom:10px; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.42); }
   .hand-title { font-size:12px; color:var(--red-deep); letter-spacing:0.2em; margin-bottom:6px; display:flex; justify-content:space-between; }
   .hand { display:flex; gap:6px; flex-wrap:wrap; }
   .card-item {
@@ -769,7 +788,7 @@
 </audio>
 <button class="bgm-btn" id="bgm-btn" type="button" title="背景音乐" hidden>🔇</button>
 
-<script src="portraits.js?v=41"></script>
+<script src="portraits.js?v=42"></script>
 <script src="/socket.io/socket.io.js"></script><script>
 const ACTION_DEFS = [
   { id: 'serve',         em: '🌹', label: '侍寝',   tip: '消耗 25 体力，依美貌+才艺获取圣宠' },

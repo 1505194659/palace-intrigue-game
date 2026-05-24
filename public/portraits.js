@@ -172,7 +172,7 @@ extraHTML +
   var SPRITE_RATIO = 4.0;
   // height-to-width ratio for individual per-class cropped card PNG/JPG assets.
   var SINGLE_RATIO = 357 / 480;
-  var ASSET_VERSION = 'v41';
+  var ASSET_VERSION = 'v42';
 
   // Mode detection: 'single' (per-class PNGs) > 'sprite' (sheet.png) > 'svg'
   window.PORTRAIT_MODE = 'svg';
