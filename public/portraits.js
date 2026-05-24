@@ -170,9 +170,9 @@ extraHTML +
   // height-to-width ratio of one column in the sheet.
   // The 6-girl AI sheet (~1024x682) gives each column ~1:4. Tune as needed.
   var SPRITE_RATIO = 4.0;
-  // height-to-width ratio for individual per-class PNGs.
-  // The auto-slicer in _slice.js cuts at 1:2.5 (classic tachi-e half-body).
-  var SINGLE_RATIO = 2.5;
+  // height-to-width ratio for individual per-class cropped card PNG/JPG assets.
+  var SINGLE_RATIO = 178 / 241;
+  var ASSET_VERSION = 'v39';
 
   // Mode detection: 'single' (per-class PNGs) > 'sprite' (sheet.png) > 'svg'
   window.PORTRAIT_MODE = 'svg';
@@ -221,7 +221,7 @@ extraHTML +
 
     if (mode === 'single') {
       // 优先用压缩 JPG（~45KB），如果 404 浏览器会显示空，PNG fallback 由 onerror 切回
-      var imgUrl = 'portraits/' + id + '.jpg';
+      var imgUrl = 'portraits/' + id + '.jpg?' + ASSET_VERSION;
       var imgStyle = 'width:100%;height:100%;object-fit:cover;border-radius:4px;';
       if (opts.headOnly) {
         // 头像聚焦：按每张图的人脸坐标定位 + 放大
@@ -232,7 +232,7 @@ extraHTML +
           'transform-origin:' + f.x + '% ' + f.y + '%;';
       }
       // JPG 加载失败时自动回退到 PNG（兼容旧服务器）
-      var fallback = 'this.onerror=null;this.src=\'portraits/' + id + '.png\'';
+      var fallback = 'this.onerror=null;this.src=\'portraits/' + id + '.png?' + ASSET_VERSION + '\'';
       return '<div class="portrait" style="' + sizeStyle + '">' +
         '<img class="portrait-img" src="' + imgUrl + '" alt="" loading="lazy" '
           + 'onerror="' + fallback + '" '
