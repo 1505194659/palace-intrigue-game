@@ -171,8 +171,8 @@ extraHTML +
   // The 6-girl AI sheet (~1024x682) gives each column ~1:4. Tune as needed.
   var SPRITE_RATIO = 4.0;
   // height-to-width ratio for individual per-class cropped card PNG/JPG assets.
-  var SINGLE_RATIO = 178 / 241;
-  var ASSET_VERSION = 'v39';
+  var SINGLE_RATIO = 357 / 480;
+  var ASSET_VERSION = 'v40';
 
   // Mode detection: 'single' (per-class PNGs) > 'sprite' (sheet.png) > 'svg'
   window.PORTRAIT_MODE = 'svg';
@@ -222,7 +222,7 @@ extraHTML +
     if (mode === 'single') {
       // 优先用压缩 JPG（~45KB），如果 404 浏览器会显示空，PNG fallback 由 onerror 切回
       var imgUrl = 'portraits/' + id + '.jpg?' + ASSET_VERSION;
-      var imgStyle = 'width:100%;height:100%;object-fit:cover;border-radius:4px;';
+      var imgStyle = 'width:100%;height:100%;object-fit:contain;border-radius:4px;';
       if (opts.headOnly) {
         // 头像聚焦：按每张图的人脸坐标定位 + 放大
         var f = FOCUS[id] || { x: 50, y: 30, s: 2.2 };
