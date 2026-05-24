@@ -274,8 +274,45 @@
   }
 
   /* === 立绘 === */
-  .portrait { position:relative; display:inline-block; overflow:visible; }
+  .portrait { position:relative; display:inline-block; overflow:hidden; border-radius:4px;
+              box-shadow:0 2px 5px rgba(60,30,10,0.18); }
   .portrait-svg { width:100%; height:100%; display:block; filter:drop-shadow(0 2px 3px rgba(60,30,10,0.18)); }
+
+  /* sprite 模式：单张 sheet.png 用 background-position 切 */
+  .sprite-portrait { background:#fbe9c2; }
+  .sprite-portrait .sprite-frame {
+    width:100%; height:100%;
+    background-image: url('portraits/sheet.png');
+    background-repeat: no-repeat;
+    background-size: 600% 100%;   /* 6 列等宽（如果你的 sheet 不是 6 列，可改 portraits.js 里 SPRITE_COLS） */
+    transform-origin: 50% 50%;
+    animation: sprite-breathe 4s ease-in-out infinite alternate;
+  }
+  @keyframes sprite-breathe {
+    from { transform: scale(1.0) translateY(0); filter: brightness(1); }
+    to   { transform: scale(1.02) translateY(-1px); filter: brightness(1.05); }
+  }
+  /* 桃花飘落（让静态图也"动"起来）*/
+  .portrait .petal {
+    position:absolute; pointer-events:none; user-select:none;
+    font-size:10px; opacity:0;
+    text-shadow:0 0 4px rgba(255,255,255,0.6);
+    animation: petal-fall 5.5s linear infinite;
+  }
+  .portrait .petal.p1 { left:18%; animation-delay: 0s;   font-size:9px;  }
+  .portrait .petal.p2 { left:55%; animation-delay: 1.8s; font-size:11px; }
+  .portrait .petal.p3 { left:78%; animation-delay: 3.6s; font-size:8px;  }
+  @keyframes petal-fall {
+    0%   { transform: translateY(-15%) rotate(0deg);    opacity: 0; }
+    12%  { opacity: 0.85; }
+    50%  { transform: translateY(50%) rotate(180deg) translateX(4px); }
+    88%  { opacity: 0.85; }
+    100% { transform: translateY(115%) rotate(360deg) translateX(-4px); opacity: 0; }
+  }
+  /* 选中态：桃花密集 + sprite 缩放加快 */
+  .class-card.selected .sprite-portrait .sprite-frame { animation-duration: 2s; }
+  .class-card.selected .portrait .petal { animation-duration: 3.5s; }
+
   /* 摇曳动画：头/发饰/飘带 各异频率 */
   .portrait-svg .p-head { transform-origin: 50px 70px; animation: p-sway 4.5s ease-in-out infinite alternate; }
   .portrait-svg .p-robe { transform-origin: 50px 88px; animation: p-robe-sway 5s ease-in-out infinite alternate; }
@@ -293,14 +330,43 @@
   .class-card.selected .portrait-svg .p-head { animation-duration: 2.6s; }
   .class-card.selected .portrait-svg .p-sash { animation-duration: 1.8s; }
 
-  /* 职业卡片改成立绘版式 */
-  .class-card .portrait { width:60px; height:84px; margin-bottom:2px; }
-  @media (max-width:360px) { .class-card .portrait { width:50px; height:70px; } }
+  /* 职业卡片立绘容器（默认 SVG 模式：紧凑型）*/
+  .class-card { gap:4px; padding:8px 6px; }
+  .class-card .portrait-wrap { width:60px; height:84px; margin-bottom:2px; display:block; }
+  .class-card .portrait-wrap .portrait { width:100%; height:100%; }
+  /* 真立绘条形模式：高条卡片 */
+  body[data-portrait-mode="sprite"] .class-card,
+  body[data-portrait-mode="single"] .class-card { min-height:240px; }
+  body[data-portrait-mode="sprite"] .class-card .portrait-wrap,
+  body[data-portrait-mode="single"] .class-card .portrait-wrap { width:54px; height:216px; }
+  @media (max-width:420px) {
+    body[data-portrait-mode="sprite"] .class-grid,
+    body[data-portrait-mode="single"] .class-grid { grid-template-columns:repeat(3,1fr); gap:6px; }
+    body[data-portrait-mode="sprite"] .class-card,
+    body[data-portrait-mode="single"] .class-card { min-height:210px; }
+    body[data-portrait-mode="sprite"] .class-card .portrait-wrap,
+    body[data-portrait-mode="single"] .class-card .portrait-wrap { width:46px; height:184px; }
+  }
+  @media (max-width:360px) {
+    body[data-portrait-mode="sprite"] .class-card,
+    body[data-portrait-mode="single"] .class-card { min-height:190px; }
+    body[data-portrait-mode="sprite"] .class-card .portrait-wrap,
+    body[data-portrait-mode="single"] .class-card .portrait-wrap { width:40px; height:160px; }
+    body[data-portrait-mode="sprite"] .class-card .name,
+    body[data-portrait-mode="single"] .class-card .name { font-size:12px; }
+    body[data-portrait-mode="sprite"] .class-card .desc,
+    body[data-portrait-mode="single"] .class-card .desc { font-size:10px; }
+  }
 
-  /* pcard 角落小立绘 */
+  /* pcard 角落小立绘（保持 1:1.7 视窗比例，避免太占位） */
   .pcard { position:relative; }
-  .pcard .mini-portrait { position:absolute; right:6px; top:6px; width:42px; height:60px; opacity:0.92; pointer-events:none; }
-  .pcard h3 { padding-right:50px; }
+  .pcard .mini-portrait { position:absolute; right:6px; top:6px; width:36px; height:62px; opacity:0.92; pointer-events:none; }
+  .pcard h3 { padding-right:46px; }
+  /* mini 立绘里把 sprite 显示上半部（人物头肩）*/
+  .pcard .mini-portrait .sprite-frame {
+    background-size: 600% 350%;
+    background-position-y: 18%;
+  }
 
   /* === BGM 浮动按钮 === */
   .bgm-btn {
@@ -515,11 +581,15 @@ let selectedClass = 'default';
 let timerHandle = null;
 let cardDescById = {};
 
-fetch('/api/meta').then((r) => r.json()).then((j) => {
+fetch('/api/meta').then((r) => r.json()).then(async (j) => {
   if (!j.ok) return;
   META = j;
   cardDescById = {};
   for (const c of j.cards) cardDescById[c.id] = c;
+  if (window.portraitsReady) {
+    try { await window.portraitsReady; } catch (_) {}
+  }
+  document.body.dataset.portraitMode = window.PORTRAIT_MODE || 'svg';
   renderClassGrid();
 });
 
@@ -558,8 +628,9 @@ function renderClassGrid() {
   for (const c of META.classes) {
     const card = document.createElement('div');
     card.className = 'class-card' + (c.id === selectedClass ? ' selected' : '');
+    // 立绘外层包装 div.portrait-wrap，让 CSS 决定尺寸（避免 inline style 锁死）
     const head = hasPortraits
-      ? window.renderPortrait(c.id, 60)
+      ? `<div class="portrait-wrap">${window.renderPortrait(c.id, 0, { fillParent: true })}</div>`
       : `<span class="icon">${c.icon || '🎭'}</span>`;
     card.innerHTML = `${head}<span class="name">${c.name}</span><span class="desc">${c.description || ''}</span>`;
     card.onclick = () => {
@@ -1107,9 +1178,12 @@ function setMiniPortrait(elId, classId) {
   if (typeof window.renderPortrait !== 'function') return;
   const el = $(elId);
   if (!el) return;
-  if (el.dataset.cls === classId) return; // 避免重复渲染（保留动画）
-  el.dataset.cls = classId || 'default';
-  el.innerHTML = window.renderPortrait(classId, 42);
+  const cur = classId || 'default';
+  if (el.dataset.cls === cur) return; // 避免重复渲染（保留动画）
+  el.dataset.cls = cur;
+  const draw = () => { el.innerHTML = window.renderPortrait(classId, 0, { fillParent: true }); };
+  if (window.portraitsReady) window.portraitsReady.then(draw);
+  else draw();
 }
 
 // ============== 背景音乐 ==============

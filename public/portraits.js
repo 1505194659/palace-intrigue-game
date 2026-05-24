@@ -147,23 +147,66 @@ extraHTML +
 
   window.PORTRAITS = PORTRAITS;
 
+  // class id -> sprite column index in sheet.png (0-based, left to right)
+  var SPRITE_INDEX = {
+    'default': 0, talent: 1, seductress: 2, schemer: 3, noble: 4, healer: 5
+  };
+  var SPRITE_COLS = 6;
+  // height-to-width ratio of one column in the sheet.
+  // The 6-girl AI sheet (~1024x682) gives each column ~1:4. Tune as needed.
+  var SPRITE_RATIO = 4.0;
+
+  // Mode detection: 'sprite' (sheet.png) > 'single' (default.png) > 'svg'
+  window.PORTRAIT_MODE = 'svg';
+  window.portraitsReady = (function () {
+    function head(url) {
+      return fetch(url, { method: 'HEAD' }).then(function (r) { return r.ok; }).catch(function () { return false; });
+    }
+    return head('portraits/sheet.png').then(function (ok) {
+      if (ok) { window.PORTRAIT_MODE = 'sprite'; return; }
+      return head('portraits/default.png').then(function (ok2) {
+        if (ok2) window.PORTRAIT_MODE = 'single';
+      });
+    });
+  })();
+
   /**
    * Render a portrait HTML chunk.
    * @param {string} classId
    * @param {number} size  display width in px
    * @returns {string}
    */
-  window.renderPortrait = function (classId, size) {
+  window.renderPortrait = function (classId, size, opts) {
     var id = (classId && PORTRAITS[classId]) ? classId : 'default';
+    opts = opts || {};
+    var fill = !!opts.fillParent;
     size = size || 64;
-    var ratio = 140 / 100;
-    var w = size, h = Math.round(size * ratio);
-    var imgUrl = 'portraits/' + id + '.png';
-    return '<div class="portrait" style="width:' + w + 'px;height:' + h + 'px;">' +
-      '<img class="portrait-img" src="' + imgUrl + '" alt=""' +
-      ' onload="this.style.opacity=1;this.nextElementSibling.style.display=\'none\';"' +
-      ' onerror="this.remove();"' +
-      ' style="opacity:0;transition:opacity 0.3s;width:100%;height:100%;object-fit:cover;border-radius:4px;"/>' +
+    var mode = window.PORTRAIT_MODE || 'svg';
+    var sizeStyle = fill ? 'width:100%;height:100%;' :
+      ('width:' + size + 'px;height:' + Math.round(size * SPRITE_RATIO) + 'px;');
+
+    if (mode === 'sprite') {
+      var colIdx = SPRITE_INDEX[id] != null ? SPRITE_INDEX[id] : 0;
+      var posX = (SPRITE_COLS === 1) ? 0 : (colIdx / (SPRITE_COLS - 1)) * 100;
+      return '<div class="portrait sprite-portrait" data-cls="' + id + '" style="' + sizeStyle + '">' +
+        '<div class="sprite-frame" style="background-position:' + posX + '% center;"></div>' +
+        '<span class="petal p1">🌸</span>' +
+        '<span class="petal p2">🌸</span>' +
+        '<span class="petal p3">🌸</span>' +
+        '</div>';
+    }
+
+    if (mode === 'single') {
+      var imgUrl = 'portraits/' + id + '.png';
+      return '<div class="portrait" style="' + sizeStyle + '">' +
+        '<img class="portrait-img" src="' + imgUrl + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:4px;"/>' +
+        '<span class="petal p1">🌸</span><span class="petal p2">🌸</span><span class="petal p3">🌸</span>' +
+        '</div>';
+    }
+    // svg fallback (1:1.4)
+    var svgSize = fill ? 'width:100%;height:100%;' :
+      ('width:' + size + 'px;height:' + Math.round(size * 1.4) + 'px;');
+    return '<div class="portrait" style="' + svgSize + '">' +
       '<div class="portrait-fallback" style="width:100%;height:100%;">' + PORTRAITS[id] + '</div>' +
       '</div>';
   };

@@ -1,46 +1,76 @@
 # Character portraits
 
-Optional PNG/JPG overrides for the six character classes. Drop files named
-exactly like the class id here and the frontend will use them instead of the
-built-in animated SVG:
+The frontend supports three modes, auto-detected on page load:
 
-- `default.png`     -- liangjia    (peach robe, gentle)
-- `talent.png`      -- caunv       (blue robe, holds a scroll)
-- `seductress.png`  -- yaoji       (red robe, gold hairpin)
-- `schemer.png`     -- xinji       (dark purple robe, round fan)
-- `noble.png`       -- dinu        (yellow robe, phoenix crown)
-- `healer.png`      -- shenyi      (green robe, herb pouch)
+1. **Sprite sheet mode (recommended)** - One horizontal image with all
+   six characters in left-to-right order:
+   `default, talent, seductress, schemer, noble, healer`
+   Save it as `public/portraits/sheet.png`.
+   The sheet should have six equal-width columns, no gaps.
+   Suggested size: 1800 x 1020 (each column 300 x 1020, ratio ~1:3.4)
+   or 1024 x 600 (each column ~170 x 600, ratio ~1:3.5).
+   Configurable in `portraits.js`: SPRITE_COLS and SPRITE_RATIO.
 
-**Recommended:** 300 x 420 px PNG, transparent background, half-body front
-view. SVG also works but rename the file to `<id>.png` (mime type is fine).
+2. **Per-class PNGs** - If `sheet.png` is absent but `default.png` exists,
+   the frontend loads `<id>.png` for each character.
 
-## image2 / Midjourney prompt template
+3. **Built-in SVG fallback** - If neither is present, the animated SVG
+   shipped in `portraits.js` is used.
 
-Copy-paste, switch the per-class line for each portrait.
+The sprite mode adds a soft breathing animation plus three sakura petals
+drifting across each portrait, so a single static AI-generated sheet still
+feels alive.
+
+## image2 / Midjourney prompt for one sheet
 
 ```
-A traditional Chinese palace concubine half-body portrait, Tang/Ming dynasty
-hanfu, front-facing, gentle stylized anime style, soft cel shading, intricate
-embroidery, no background, transparent png, centered composition, full face
-visible, hands at chest level, --ar 5:7
+Six traditional Chinese palace beauties, full body, standing pose, arranged
+in a single horizontal row, each in a tall vertical panel, equal widths,
+ornate Tang/Song dynasty hanfu, intricate hair ornaments, soft cel-shaded
+anime art, watercolor highlights, transparent panel borders, name label
+on top of each panel, two-line poetic description below each panel.
+From left to right:
+1. liangjia - peach-pink robe, simple silver hairpin with plum blossoms,
+   gentle expression, holding her own sleeve, low-rank concubine.
+2. caunv - indigo blue robe, jade hairstick, holding a bamboo scroll,
+   intellectual and serene look.
+3. yaoji - vivid scarlet robe with gold trim, butterfly gold hairpin,
+   red lips, vermilion forehead mark, alluring half smile.
+4. xinji - deep violet robe, silver dagger hairpin, holding a round
+   palace fan painted with peonies, calculating side glance.
+5. dinu - bright imperial yellow robe with red sash, full phoenix
+   crown with hanging tassels, regal posture.
+6. shenyi - jade green robe with white inner layer, wooden hairstick
+   with herb leaf, holding a small medicine pouch, kind eyes.
+--ar 16:9 --style raw
+```
 
-<PER CLASS LINE BELOW>
+## image2 / Midjourney prompt for individual portraits
 
-Lighting: soft warm key, slight rim light. Mood: refined and elegant.
-Colors of palette: ivory, gold, vermilion accents.
+```
+Traditional Chinese palace concubine half-body portrait, Tang/Ming dynasty
+hanfu, front-facing, gentle stylized anime style, soft cel shading,
+intricate embroidery, transparent background, centered composition,
+full face visible, hands at chest level, --ar 5:7
+
+<PER-CLASS LINE>
+
+Lighting: soft warm key, slight rim light.
+Mood: refined and elegant.
+Palette: ivory, gold, vermilion accents.
 ```
 
 Per-class line:
 
-- **liangjia (default)**: soft peach-pink robe, simple silver hair pin with
-  plum blossoms, naive smile, low rank concubine
-- **caunv (talent)**: indigo blue robe, jade hair stick, holds a bamboo
+- **default (liangjia)**: soft peach-pink robe, silver hair pin with plum
+  blossoms, naive smile, low-rank concubine
+- **talent (caunv)**: indigo blue robe, jade hair stick, holding a bamboo
   scroll, intellectual look
-- **yaoji (seductress)**: vivid scarlet robe with gold trim, butterfly gold
-  hairpin, red lips, alluring half-smile, vermilion forehead mark
-- **xinji (schemer)**: deep violet robe, silver dagger hairpin, holds a
+- **seductress (yaoji)**: vivid scarlet robe with gold trim, butterfly
+  gold hairpin, red lips, alluring half smile, vermilion forehead mark
+- **schemer (xinji)**: deep violet robe, silver dagger hairpin, holds a
   round palace fan painted with peonies, calculating side glance
-- **dinu (noble)**: bright yellow imperial robe with red sash, full phoenix
-  crown with tassels, regal posture, eyes look straight ahead
-- **shenyi (healer)**: jade green robe with white inner layer, wooden hair
-  stick with herb leaf, holds a small medicine pouch, kind eyes
+- **noble (dinu)**: bright imperial yellow robe with red sash, full
+  phoenix crown with tassels, regal posture, looks straight ahead
+- **healer (shenyi)**: jade green robe with white inner layer, wooden
+  hair stick with herb leaf, holds a small medicine pouch, kind eyes
