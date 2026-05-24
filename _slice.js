@@ -1,42 +1,44 @@
-// One-shot helper: slice the 6-girl AI sheet into per-class half-body PNGs.
-// Saves:
-//   - public/portraits/sheet.png  (whole image copy, for sprite mode)
-//   - public/portraits/<id>.png   (head-shoulder crops 5:7, for single mode)
+// One-shot helper: slice an AI-generated multi-card sheet into per-class PNGs.
+// Supports either 6x1 horizontal sheets (cols=6, rows=1) or 3x2 grids (cols=3, rows=2).
 const path = require('path');
 const fs = require('fs');
 const { Jimp } = require('jimp');
 
-const SRC = process.argv[2] || 'C:/Users/a1505/Downloads/ChatGPT Image 2026年5月24日 12_42_21.png';
+const SRC = process.argv[2] || 'C:/Users/a1505/Downloads/ChatGPT Image 2026年5月24日 12_57_13.png';
 const OUT = path.join(__dirname, 'public', 'portraits');
+// Order: row-major. For a 3x2 sheet:
+//   row 0 (top):    default(良家), talent(才女), seductress(妖姬)
+//   row 1 (bottom): schemer(心机), noble(嫡女),  healer(神医)
 const IDS = ['default', 'talent', 'seductress', 'schemer', 'noble', 'healer'];
+
+// CONFIG: tune to the actual sheet layout.
+const COLS = 3;
+const ROWS = 2;
+const PAD = 0; // pixels trimmed from each card edge (gutters between cards)
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const img = await Jimp.read(SRC);
   const W = img.bitmap.width;
   const H = img.bitmap.height;
-  console.log('source:', W, 'x', H);
+  console.log('source:', W, 'x', H, '   layout:', COLS, 'x', ROWS);
 
-  // copy whole sheet as sprite source
-  await img.clone().write(path.join(OUT, 'sheet.png'));
-  console.log('wrote sheet.png');
+  const cellW = W / COLS;
+  const cellH = H / ROWS;
 
-  const cols = 6;
-  const colW = W / cols;
-  // crop body region: head down to just above the name plate (~y=720).
-  // Use ratio 1:2.5, classic "tachi-e" half-body proportions.
-  const RATIO = 2.5;
-  const cropH = Math.round(colW * RATIO);
-  const y0 = 8;
-
-  for (let i = 0; i < cols; i++) {
-    const x = Math.round(i * colW);
-    const w = Math.round(colW);
-    const out = img.clone().crop({ x, y: y0, w, h: Math.min(cropH, H - y0) });
-    // resize to a clean target (keeping ratio): width 500
-    out.resize({ w: 500 });
-    const outPath = path.join(OUT, IDS[i] + '.png');
-    await out.write(outPath);
-    console.log('wrote', IDS[i] + '.png', '(crop x=' + x + ', w=' + w + ', h=' + cropH + ')');
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const idx = r * COLS + c;
+      if (idx >= IDS.length) break;
+      const x = Math.round(c * cellW + PAD);
+      const y = Math.round(r * cellH + PAD);
+      const w = Math.round(cellW - 2 * PAD);
+      const h = Math.round(cellH - 2 * PAD);
+      const out = img.clone().crop({ x, y, w, h });
+      out.resize({ w: 500 });
+      const outPath = path.join(OUT, IDS[idx] + '.png');
+      await out.write(outPath);
+      console.log('wrote', IDS[idx] + '.png', '(x=' + x + ', y=' + y + ', ' + w + 'x' + h + ')');
+    }
   }
 })().catch((e) => { console.error(e); process.exit(1); });
