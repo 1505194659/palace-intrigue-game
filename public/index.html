@@ -1044,6 +1044,7 @@ function renderState(s) {
     let reason = lastLines.find((l) => l.startsWith('🏁')) || '';
     $('winner-name').textContent = winLine.replace(/^🌟\s*/, '');
     $('end-reason').textContent = reason.replace(/^🏁\s*/, '');
+    updateRematchUI(s);
   } else {
     $('end-banner').style.display = 'none';
   }
@@ -1109,6 +1110,7 @@ function renderGomokuStandalone(s) {
     }
     $('g-winner-name').textContent = text;
     if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+    updateGRematchUI(s);
   } else {
     $('g-end-banner').style.display = 'none';
   }
@@ -1373,6 +1375,39 @@ $('btn-rematch').onclick = () => {
 };
 $('btn-reselect').onclick = () => { openReselectModal(); };
 $('g-btn-rematch').onclick = () => { lastGLogTotal = -1; socket.emit('rematch'); };
+
+// 根据 state.rematch 字段更新 UI: 自己按过 → 按钮变"等待对方"; 双方都按 → server 会推进
+function updateRematchUI(s) {
+  const r = s && s.rematch;
+  const btnA = $('btn-rematch');
+  const btnB = $('btn-reselect');
+  if (!btnA || !btnB || !r) return;
+  if (r.youReady) {
+    btnA.disabled = true;
+    btnB.disabled = true;
+    btnA.textContent = r.opponentReady ? '准 备 开 局…' : '已 请 求 · 等 候 对 方';
+    btnB.textContent = '已 请 求 · 等 候 对 方';
+  } else {
+    btnA.disabled = false;
+    btnB.disabled = false;
+    btnA.textContent = r.opponentReady ? '✦ 对 方 已 请 求 · 同 角 色 再 战' : '再 战 同 角 色';
+    btnB.textContent = r.opponentReady ? '✦ 对 方 已 请 求 · 换 角 色 再 战' : '换 角 色 再 战';
+  }
+}
+
+// 五子棋同样有等待提示
+function updateGRematchUI(s) {
+  const r = s && s.rematch;
+  const btn = $('g-btn-rematch');
+  if (!btn || !r) return;
+  if (r.youReady) {
+    btn.disabled = true;
+    btn.textContent = r.opponentReady ? '准 备 开 局…' : '已 请 求 · 等 候 对 方';
+  } else {
+    btn.disabled = false;
+    btn.textContent = r.opponentReady ? '✦ 对 方 已 请 求 · 再 来 一 局' : '再 来 一 局';
+  }
+}
 
 function openReselectModal() {
   if (!META.classes || !META.classes.length) {

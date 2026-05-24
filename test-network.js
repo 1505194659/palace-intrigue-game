@@ -89,11 +89,16 @@ function assertEq(a, b, m) { assert(a === b, `${m} — 预期 ${b}, 实际 ${a}`
   await delay(200);
   assertEq(aState.phase, 'ended', `${maxTurns} 月后游戏结束`);
 
-  // 6. 非法动作 - 在已结束的房里尝试，应当被忽略（不是合法 action）
-  // 改测：rematch 后试一个非法动作
+  // 6. 非法动作 - 在已结束的房里尝试，应当被忽略
+  // v3.8: rematch 需要双方都按一次才开局
   a.emit('rematch');
   await delay(200);
-  assertEq(aState.phase, 'choosing', 'rematch 后回到 choosing');
+  assertEq(aState.phase, 'ended', '仅 a 按 rematch 时仍为 ended');
+  assert(aState.rematch && aState.rematch.youReady, 'a 已记为就绪');
+  assert(aState.rematch && !aState.rematch.opponentReady, 'b 还未就绪');
+  b.emit('rematch');
+  await delay(200);
+  assertEq(aState.phase, 'choosing', '双方都按后回到 choosing');
   assertEq(aState.turn, 1, 'rematch 后 turn=1');
   // v3.1: 月初可能抽卡，logTotal=1（重开） + 0~2（双方抽卡）
   assert(aState.logTotal >= 1 && aState.logTotal <= 3,

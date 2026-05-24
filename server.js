@@ -203,6 +203,12 @@ function buildPalaceView(room, forSocket) {
     opponentReady: !!(op && op.action),
     youHaveOpponent: room.players.length === 2,
     duel: buildDuelView(room, forSocket),
+    rematch: {
+      youReady: !!(me && me.rematchReady),
+      opponentReady: !!(op && op.rematchReady),
+      yourClassId: me ? me.rematchClassId : null,
+      opponentClassId: op ? op.rematchClassId : null,
+    },
   };
 }
 
@@ -219,6 +225,10 @@ function buildGomokuStandaloneView(room, forSocket) {
     opponent: op ? { name: op.state.name, score: op.score || 0 } : null,
     youHaveOpponent: room.players.length === 2,
     duel: buildDuelView(room, forSocket),
+    rematch: {
+      youReady: !!(me && me.rematchReady),
+      opponentReady: !!(op && op.rematchReady),
+    },
   };
 }
 
@@ -552,24 +562,56 @@ io.on('connection', (socket) => {
   socket.on('rematch', ({ classId } = {}) => {
     const room = findRoomBySocket(socket.id);
     if (!room || room.phase !== 'ended') return;
+    const player = room.players.find((p) => p.socketId === socket.id);
+    if (!player) return;
+
+    const validClassIds = room.mode === 'gomoku'
+      ? null
+      : ((room.config.classes && room.config.classes.enabled) || ['default']);
+
+    // 记录该玩家"再战"意愿 + 想要的新职业
+    if (room.mode !== 'gomoku') {
+      const wanted = classId || (player.state && player.state.classId) || 'default';
+      player.rematchClassId = validClassIds.includes(wanted) ? wanted : 'default';
+    }
+    player.rematchReady = true;
+
+    // 把"对方还没按"的状态先广播一次, 客户端可以显示等待
+    if (room.players.length === 2 && !room.players.every((p) => p.rematchReady)) {
+      const waitingName = room.players.find((p) => !p.rematchReady).state.name;
+      // 仅追加一条等待提示, 避免日志爆炸: 只在第一次按时加
+      if (!room._rematchLogged) {
+        room.log.push(`⏳ ${player.state.name} 已请求再战，等待 ${waitingName} 同意`);
+        room._rematchLogged = true;
+      }
+      broadcastRoom(room);
+      return;
+    }
+
+    // 双方都按了 (或单人房) → 真正重开
     clearTimeoutIfAny(room);
     useRoomConfig(room);
+    delete room._rematchLogged;
+
     if (room.mode === 'gomoku') {
-      room.log = [`🔄 再来一局`];
+      room.log = ['🔄 再来一局'];
       room.duel = null;
+      for (const p of room.players) { p.rematchReady = false; }
       const attackerIdx = room.players[0].score >= (room.players[1].score || 0) ? 1 : 0;
       startDuel(room, { module: duels.getById('gomoku'), kind: 'standalone', attackerIdx });
     } else {
-      const validClassIds = (room.config.classes && room.config.classes.enabled) || ['default'];
       room.turn = 1;
       room.phase = room.players.length === 2 ? 'choosing' : 'waiting';
       room.log = ['🔄 重开一局，宫门再启'];
       room.duel = null;
       room.pendingActions = null;
       for (const p of room.players) {
-        const cid = validClassIds.includes(p.state.classId) ? p.state.classId : 'default';
-        p.state = game.newPlayerState(p.state.name, cid);
+        const cid = p.rematchClassId || (p.state && p.state.classId) || 'default';
+        const finalCid = validClassIds.includes(cid) ? cid : 'default';
+        p.state = game.newPlayerState(p.state.name, finalCid);
         p.action = null;
+        p.rematchReady = false;
+        delete p.rematchClassId;
       }
       if (room.phase === 'choosing') {
         const subLog = [];
