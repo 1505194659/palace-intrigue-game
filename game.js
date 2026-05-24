@@ -136,6 +136,7 @@ function useCard(self, other, cardId, log) {
       if (card.rep)     { self.reputation = clamp(self.reputation + card.rep, 0, 100); parts.push(`+${card.rep} 名望`); }
       if (card.beauty)  { self.beauty  = clamp(self.beauty  + card.beauty,  0, 100); parts.push(`+${card.beauty} 美貌`); }
       if (card.talent)  { self.talent  = clamp(self.talent  + card.talent,  0, 100); parts.push(`+${card.talent} 才艺`); }
+      if (card.scheme)  { self.scheme  = clamp(self.scheme  + card.scheme,  0, 100); parts.push(`+${card.scheme} 心计`); }
       if (card.energy)  { self.energy  = clamp(self.energy  + card.energy,  0, 100); parts.push(`+${card.energy} 体力`); }
       log.push(`${card.icon} ${self.name} 用了「${card.name}」 (${parts.join('，')})`);
       break;
@@ -146,6 +147,9 @@ function useCard(self, other, cardId, log) {
       other._pendingDebuff = other._pendingDebuff || {};
       if (card.energy_next) {
         other._pendingDebuff.energyMinus = (other._pendingDebuff.energyMinus || 0) + card.energy_next;
+      }
+      if (card.favor_next) {
+        other._pendingDebuff.favorMinus = (other._pendingDebuff.favorMinus || 0) + card.favor_next;
       }
       log.push(`${card.icon} ${self.name} 暗下「${card.name}」，${other.name} 下月将受其害`);
       break;
@@ -162,18 +166,7 @@ function useCard(self, other, cardId, log) {
       log.push(`${card.icon} ${self.name} 焚「${card.name}」，本月免疫一次负面事件`);
       break;
     }
-    case 'reveal_last': {
-      const opLast = other.lastAction;
-      // 公共日志只显示"使用了密信"，详细情报只发给 self
-      log.push(`📜 ${self.name} 拆开「${card.name}」（密阅）`);
-      if (opLast) {
-        self.revealedAction = opLast;
-        log.push({ text: `🔍 密信揭示：${other.name} 上月选了 ${ACTION_LABEL[opLast]}`, private: self.name });
-      } else {
-        log.push({ text: `🔍 密信揭示：${other.name} 尚无上月动作`, private: self.name });
-      }
-      break;
-    }
+    // reveal_last（密信）已废弃 - 起居注本身已能看到对方动作
     default:
       log.push(`${card.icon || '🎴'} ${self.name} 使用了「${card.name}」`);
   }
@@ -193,11 +186,18 @@ function onTurnStart(state, log, rng, isFirstTurn) {
   if (state._pendingDebuff) {
     if (state.shields && state.shields.event) {
       delete state.shields.event;
-      log.push(`🔮 ${state.name} 龟甲符护体，蛊毒尽散`);
-    } else if (state._pendingDebuff.energyMinus) {
-      const before = state.energy;
-      state.energy = Math.max(0, state.energy - state._pendingDebuff.energyMinus);
-      log.push(`🦋 ${state.name} 蛊毒发作，体力 -${before - state.energy}`);
+      log.push(`🔮 ${state.name} 龟甲符护体，下月负面尽散`);
+    } else {
+      if (state._pendingDebuff.energyMinus) {
+        const before = state.energy;
+        state.energy = Math.max(0, state.energy - state._pendingDebuff.energyMinus);
+        log.push(`🦋 ${state.name} 蛊毒发作，体力 -${before - state.energy}`);
+      }
+      if (state._pendingDebuff.favorMinus) {
+        const before = state.favor;
+        state.favor = Math.max(5, state.favor - state._pendingDebuff.favorMinus);
+        log.push(`🔥 ${state.name} 凤诏施压，圣宠 -${before - state.favor}`);
+      }
     }
     delete state._pendingDebuff;
   }
@@ -246,7 +246,7 @@ function newPlayerState(name, classId) {
     usedCardThisMonth: false,
     shields: {},          // 被动卡占位：{ sabotage: true, event: true }
     nextMonthDebuff: {},  // 下月生效的负面：{ energyMinus: 25 }
-    revealedAction: null, // 被密信揭示的"上月动作"，仅展示用
+    revealedAction: null, // 兼容旧字段（密信道具已废弃）
     lastAction: null,     // 自己上一月做的动作
   };
   if (cls) {
@@ -526,7 +526,7 @@ function resolveTurn(stateA, stateB, actionA, actionB, turn, rng, opts) {
 
   stateA.defending = actionA === 'defend';
   stateB.defending = actionB === 'defend';
-  // 记录本月动作（密信下月可揭示）
+  // 记录本月动作（用于起居注回放）
   stateA.lastAction = actionA;
   stateB.lastAction = actionB;
 

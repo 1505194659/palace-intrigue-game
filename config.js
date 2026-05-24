@@ -16,8 +16,32 @@ const RUNTIME_PATH = path.join(__dirname, 'config.json');
 
 let cached = null;
 
+// 已废弃的卡牌效果（旧版 config.json 升级时自动剔除）
+const BLACKLIST_CARD_EFFECTS = new Set(['reveal_last']);
+
 function deepClone(o) {
   return JSON.parse(JSON.stringify(o));
+}
+
+/** 合并卡牌清单：保留 runtime 已有项（除黑名单），补全 default 中 runtime 没有的新卡 */
+function mergeCardsList(defaultList, runtimeList) {
+  const dl = Array.isArray(defaultList) ? defaultList : [];
+  const rl = Array.isArray(runtimeList) ? runtimeList : [];
+  const out = [];
+  const seen = new Set();
+  for (const c of rl) {
+    if (!c || !c.id) continue;
+    if (BLACKLIST_CARD_EFFECTS.has(c.effect)) continue;
+    out.push(deepClone(c));
+    seen.add(c.id);
+  }
+  for (const c of dl) {
+    if (!c || !c.id || seen.has(c.id)) continue;
+    if (BLACKLIST_CARD_EFFECTS.has(c.effect)) continue;
+    out.push(deepClone(c));
+    seen.add(c.id);
+  }
+  return out;
 }
 
 /** default 打底，runtime 覆盖；缺字段自动从 default 补全（版本升级友好） */
@@ -54,11 +78,18 @@ function load() {
   }
   const runtime = JSON.parse(fs.readFileSync(RUNTIME_PATH, 'utf8'));
   const merged = deepMerge(defaults, runtime);
+  // 卡牌清单要"按 ID 合并 + 过滤黑名单"，不能用整体替换
+  if (merged.cards) {
+    merged.cards.list = mergeCardsList(
+      defaults.cards && defaults.cards.list,
+      runtime.cards && runtime.cards.list,
+    );
+  }
   const runtimeRaw = JSON.stringify(runtime, null, 2);
   const mergedRaw = JSON.stringify(merged, null, 2);
   if (mergedRaw !== runtimeRaw) {
     fs.writeFileSync(RUNTIME_PATH, mergedRaw, 'utf8');
-    console.log('[config] 已从 config.default.json 补全缺失字段（保留已有自定义项）');
+    console.log('[config] 已从 config.default.json 补全缺失字段（保留已有自定义项，清理废弃卡）');
   }
   cached = merged;
   return cached;

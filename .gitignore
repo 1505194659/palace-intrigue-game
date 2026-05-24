@@ -29,3 +29,4 @@ config.json
 
 # 提交消息草稿
 _commitmsg.txt
+.commit-msg.txt

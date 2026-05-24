@@ -112,14 +112,33 @@
         "type": "passive", "effect": "shield_sabotage"
       },
       {
-        "id": "secret_letter", "name": "密信", "icon": "📜",
-        "description": "立即揭示对方上月所选动作",
-        "type": "active", "effect": "reveal_last"
+        "id": "tortoise_charm", "name": "龟甲符", "icon": "🔮",
+        "description": "下月免疫一切负面（蛊毒/随机灾/滑胎）",
+        "type": "active", "effect": "self_shield_event"
       },
       {
-        "id": "tortoise_charm", "name": "龟甲符", "icon": "🔮",
-        "description": "下月免疫一切负面随机事件",
-        "type": "active", "effect": "self_shield_event"
+        "id": "rouge_box", "name": "胭脂盒", "icon": "💄",
+        "description": "立即美貌 +10、才艺 +4、圣宠 +5",
+        "type": "active", "effect": "self_buff",
+        "beauty": 10, "talent": 4, "favor": 5
+      },
+      {
+        "id": "moon_invite", "name": "邀月帖", "icon": "🌙",
+        "description": "立即名望 +15、势力 +5",
+        "type": "active", "effect": "self_buff",
+        "rep": 15, "power": 5
+      },
+      {
+        "id": "elixir", "name": "凝神丹", "icon": "⚜️",
+        "description": "立即体力 +30、心计 +3",
+        "type": "active", "effect": "self_buff",
+        "energy": 30, "scheme": 3
+      },
+      {
+        "id": "phoenix_decree", "name": "凤诏", "icon": "🔥",
+        "description": "下月对方圣宠 -15（直接生效，可被龟甲挡）",
+        "type": "active", "effect": "opp_debuff",
+        "favor_next": 15
       }
     ]
   }

@@ -332,6 +332,35 @@
   }
 
   /* Guess UI */
+  /* 暗选数 4 张大牌按钮 */
+  .guess-rule {
+    text-align:center; color:var(--ink-soft); font-size:13px;
+    margin-bottom:10px; line-height:1.4;
+  }
+  .guess-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:8px; }
+  .gcard {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:2px; padding:14px 4px;
+    background:linear-gradient(180deg,#fff8e7,#ecd9b3);
+    border:2px solid var(--gold); border-radius:6px;
+    cursor:pointer; min-height:90px;
+    transition:transform 0.08s, box-shadow 0.08s;
+    box-shadow:0 3px 0 rgba(184,134,42,0.4);
+  }
+  .gcard:hover:not(.used) { transform:translateY(-2px); box-shadow:0 5px 0 rgba(184,134,42,0.5); }
+  .gcard:active:not(.used) { transform:translateY(1px); box-shadow:0 1px 0 rgba(184,134,42,0.3); }
+  .gcard .gv { font-size:34px; font-weight:700; color:var(--red-deep); font-variant-numeric:tabular-nums; }
+  .gcard .glabel { font-size:11px; color:var(--ink-soft); letter-spacing:0.1em; }
+  .gcard.used {
+    opacity:0.35; cursor:not-allowed;
+    background:#e0d4b6; box-shadow:none;
+  }
+  .gcard.used .gv { text-decoration:line-through; }
+  @media (max-width:380px) {
+    .gcard { min-height:78px; padding:10px 2px; }
+    .gcard .gv { font-size:28px; }
+  }
+
   .guess-input {
     display:flex; gap:10px; align-items:center; margin:16px 0;
   }
@@ -1148,52 +1177,39 @@ function iconOfRps(c) {
 
 function renderGuessUI(container, d) {
   const score = d.score || { you: 0, opponent: 0 };
+  const myHand = d.yourHand || [];
+  const allCards = d.cardValues || [20, 40, 60, 80];
   let html = `<div class="duel-score"><span class="me">你 ${score.you}</span><span class="op">对手 ${score.opponent}</span></div>`;
+  html += `<div class="guess-rule">先 ${d.winTo || 2} 胜决出，各持 ${allCards.length} 张：${allCards.join(' / ')}（每张限用一次）</div>`;
   if (d.rounds && d.rounds.length) {
     html += '<div class="rps-rounds">';
     for (let i = 0; i < d.rounds.length; i++) {
       const r = d.rounds[i];
-      html += `<div class="rps-round">第${i+1}局 ${r.a} vs ${r.b}${r.winner === -1 ? ' 平' : (r.winner === 0 ? ' (攻方胜)' : ' (守方胜)')}</div>`;
+      const label = r.winner === -1 ? '平' : (r.winner === 0 ? '攻方胜' : '守方胜');
+      html += `<div class="rps-round">第${i+1}局 ${r.a} vs ${r.b}（${label}）</div>`;
     }
     html += '</div>';
   }
-  if (d.yourPending) {
+  if (d.yourPending != null) {
     html += `<p style="text-align:center; color:var(--ink-soft); font-size:18px;">已暗选 <b>${d.yourPending}</b>，等候对手…</p>`;
   } else if (d.winner === null) {
-    html += `
-      <div class="guess-input">
-        <input id="d-guess-num" type="number" min="1" max="100" placeholder="1-100" inputmode="numeric" />
-        <button class="primary" id="d-guess-submit">出 招</button>
-      </div>
-      <div class="guess-quick">
-        <button data-n="1">1</button>
-        <button data-n="20">20</button>
-        <button data-n="50">50</button>
-        <button data-n="80">80</button>
-        <button data-n="100">100</button>
-      </div>
-      <p style="text-align:center; color:var(--ink-soft); font-size:12px; margin-top:8px;">点快捷或自定义数字（1-100），同步揭晓比大</p>
-    `;
+    html += '<div class="guess-cards">';
+    for (const v of allCards) {
+      const has = myHand.includes(v);
+      html += `<button class="gcard${has ? '' : ' used'}" data-n="${v}"${has ? '' : ' disabled'}>
+        <span class="gv">${v}</span><span class="glabel">${has ? '可用' : '已弃'}</span>
+      </button>`;
+    }
+    html += '</div>';
+    html += `<p style="text-align:center; color:var(--ink-soft); font-size:12px; margin-top:8px;">同步暗选 — 大者胜本局，不论输赢两张牌都消耗</p>`;
   }
   container.innerHTML = html;
-  const submit = $('d-guess-submit');
-  if (submit) {
-    submit.onclick = () => {
-      const n = parseInt($('d-guess-num').value, 10);
-      if (!Number.isInteger(n) || n < 1 || n > 100) { showToast('请输入 1-100 整数'); return; }
-      socket.emit('duel_action', { num: n });
+  container.querySelectorAll('.gcard:not(.used)').forEach((btn) => {
+    btn.onclick = () => {
+      socket.emit('duel_action', { num: parseInt(btn.dataset.n, 10) });
       playSound('click');
     };
-    container.querySelectorAll('.guess-quick button').forEach((btn) => {
-      btn.onclick = () => {
-        socket.emit('duel_action', { num: parseInt(btn.dataset.n, 10) });
-        playSound('click');
-      };
-    });
-    const inp = $('d-guess-num');
-    inp.focus();
-    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit.click(); });
-  }
+  });
 }
 
 // ============== 五子棋画布 ==============

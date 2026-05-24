@@ -235,15 +235,15 @@ async function main() {
         continue;
       }
       guessTested = true;
-      // A 出 100, B 出 1 -> A 胜
-      pa.emit('duel_action', { num: 100 });
-      pb.emit('duel_action', { num: 1 });
+      // A 出 80, B 出 20 -> A 胜
+      pa.emit('duel_action', { num: 80 });
+      pb.emit('duel_action', { num: 20 });
       const r1 = await waitFor(pa, 'state', (s) => s.duel && s.duel.score && s.duel.score.you === 1, 3000, 'A 第一局');
       assert(r1.duel.score.you === 1);
-      // 第二局 A 99, B 1 -> A 胜出
+      // 第二局 A 60, B 40 -> A 2:0 胜出
       const afterPromise = waitFor(pa, 'state', (s) => s.phase === 'choosing' || s.phase === 'ended', 4000);
-      pa.emit('duel_action', { num: 99 });
-      pb.emit('duel_action', { num: 1 });
+      pa.emit('duel_action', { num: 60 });
+      pb.emit('duel_action', { num: 40 });
       const after = await afterPromise;
       assert(after.phase === 'choosing', '回到 choosing');
       pa.disconnect(); pb.disconnect();

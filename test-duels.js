@@ -115,60 +115,70 @@ section('4. rps 超时', () => {
 // guess
 // ============================================================
 
-section('5. guess 基础流程', () => {
+section('5. guess 基础流程 (4 张牌)', () => {
   const s = guess.init({});
-  let r = guess.validateAction(s, 0, { num: 50 });
-  assert(r.ok, '50 合法');
-  guess.applyAction(s, 0, { num: 50 });
-  guess.applyAction(s, 1, { num: 75 });
-  assert(s.score[1] === 1, 'P1 出 75 > 50，P1 胜本局');
+  assert(s.hands[0].length === 4 && s.hands[1].length === 4, '双方各 4 张牌');
+  let r = guess.validateAction(s, 0, { num: 40 });
+  assert(r.ok, '40 在手牌合法');
+  guess.applyAction(s, 0, { num: 40 });
+  guess.applyAction(s, 1, { num: 80 });
+  assert(s.score[1] === 1, 'P1 出 80 > 40，P1 胜本局');
   assert(s.rounds[0].winner === 1, '记录正确');
+  assert(!s.hands[0].includes(40), 'P0 40 出过即弃');
+  assert(!s.hands[1].includes(80), 'P1 80 出过即弃');
 });
 
 section('6. guess 边界 / 非法输入', () => {
   const s = guess.init({});
-  assert(!guess.validateAction(s, 0, { num: 0 }).ok, '0 被拒');
-  assert(!guess.validateAction(s, 0, { num: 101 }).ok, '101 被拒');
-  assert(!guess.validateAction(s, 0, { num: 1.5 }).ok, '小数被拒');
-  assert(!guess.validateAction(s, 0, { num: 'abc' }).ok, '字符串被拒');
-  assert(guess.validateAction(s, 0, { num: 1 }).ok, '1 合法');
-  assert(guess.validateAction(s, 0, { num: 100 }).ok, '100 合法');
+  assert(!guess.validateAction(s, 0, { num: 0 }).ok, '0 不在手牌');
+  assert(!guess.validateAction(s, 0, { num: 101 }).ok, '101 不在手牌');
+  assert(!guess.validateAction(s, 0, { num: 50 }).ok, '50 不在标准牌组');
+  assert(guess.validateAction(s, 0, { num: 20 }).ok, '20 合法');
+  assert(guess.validateAction(s, 0, { num: 80 }).ok, '80 合法');
 });
 
-section('7. guess 同数平局重抽 + 禁选重复数', () => {
+section('7. guess 同选同张 → 双方都丢这张', () => {
   const s = guess.init({});
-  guess.applyAction(s, 0, { num: 50 });
-  guess.applyAction(s, 1, { num: 50 });
+  guess.applyAction(s, 0, { num: 80 });
+  guess.applyAction(s, 1, { num: 80 });
   assert(s.score[0] === 0 && s.score[1] === 0, '平局不计分');
   assert(s.rounds[0].winner === -1, '记录平局');
-  assert(guess.canAct(s, 0) && guess.canAct(s, 1), '双方仍可继续');
-  // 关键：双方都不能再选 50（避免无限平局）
-  assert(!guess.validateAction(s, 0, { num: 50 }).ok, 'P0 不能再选 50');
-  assert(!guess.validateAction(s, 1, { num: 50 }).ok, 'P1 不能再选 50');
-  assert(guess.validateAction(s, 0, { num: 51 }).ok, 'P0 可选 51');
+  assert(!s.hands[0].includes(80) && !s.hands[1].includes(80), '双方都失 80');
+  // 不能再选 80（已弃）
+  assert(!guess.validateAction(s, 0, { num: 80 }).ok, 'P0 不能再选 80');
+  assert(!guess.validateAction(s, 1, { num: 80 }).ok, 'P1 不能再选 80');
 });
 
-section('8. guess 完整三局两胜', () => {
+section('8. guess 先到 2 胜结束', () => {
   const s = guess.init({});
-  // 第 1 局：P0 出 100, P1 出 1 -> P0 胜
-  guess.applyAction(s, 0, { num: 100 });
-  guess.applyAction(s, 1, { num: 1 });
-  assert(s.score[0] === 1, '第 1 局 P0 胜');
-  // 第 2 局：P0 出 50, P1 出 99 -> P1 胜
-  guess.applyAction(s, 0, { num: 50 });
-  guess.applyAction(s, 1, { num: 99 });
-  assert(s.score[1] === 1, '第 2 局 P1 胜');
-  // 第 3 局：P0 出 80, P1 出 70 -> P0 胜
+  // 第 1 局：80 vs 20 → P0 胜
   guess.applyAction(s, 0, { num: 80 });
-  guess.applyAction(s, 1, { num: 70 });
-  assert(guess.isOver(s) && guess.getWinner(s) === 0, 'P0 2:1 胜');
+  guess.applyAction(s, 1, { num: 20 });
+  assert(s.score[0] === 1, '第 1 局 P0 胜');
+  // 第 2 局：60 vs 40 → P0 胜
+  guess.applyAction(s, 0, { num: 60 });
+  guess.applyAction(s, 1, { num: 40 });
+  assert(guess.isOver(s) && guess.getWinner(s) === 0, 'P0 2:0 提前胜');
 });
 
-section('9. guess 超时', () => {
+section('9. guess 牌全用完按总分判 (平局攻方胜)', () => {
+  const s = guess.init({ options: { attackerIdx: 0 } });
+  // 让全部 4 局都打成平局 (双方完全镜像)
+  for (const v of [20, 40, 60, 80]) {
+    guess.applyAction(s, 0, { num: v });
+    guess.applyAction(s, 1, { num: v });
+  }
+  assert(guess.isOver(s), '4 局后结束');
+  assert(guess.getWinner(s) === 0, '0:0 平局攻方占优');
+});
+
+section('10. guess 超时自动出最小牌', () => {
   const s = guess.init({});
-  guess.applyAction(s, 0, { num: 50 });
+  guess.applyAction(s, 0, { num: 80 });
   guess.onTimeout(s);
-  assert(s.score[0] === 1, 'P1 未出，P0 胜本轮');
+  // P1 没出 → 自动用最小 20，80 vs 20 → P0 胜
+  assert(s.score[0] === 1, 'P0 80 > P1 20');
+  assert(!s.hands[1].includes(20), 'P1 20 也被消耗');
 });
 
 // ============================================================
