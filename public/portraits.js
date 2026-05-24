@@ -155,19 +155,20 @@ extraHTML +
   // height-to-width ratio of one column in the sheet.
   // The 6-girl AI sheet (~1024x682) gives each column ~1:4. Tune as needed.
   var SPRITE_RATIO = 4.0;
-  // height-to-width ratio for individual per-class PNGs (recommended 5:7 = 1.4).
-  var SINGLE_RATIO = 1.4;
+  // height-to-width ratio for individual per-class PNGs.
+  // The auto-slicer in _slice.js cuts at 1:2.5 (classic tachi-e half-body).
+  var SINGLE_RATIO = 2.5;
 
-  // Mode detection: 'sprite' (sheet.png) > 'single' (default.png) > 'svg'
+  // Mode detection: 'single' (per-class PNGs) > 'sprite' (sheet.png) > 'svg'
   window.PORTRAIT_MODE = 'svg';
   window.portraitsReady = (function () {
     function head(url) {
       return fetch(url, { method: 'HEAD' }).then(function (r) { return r.ok; }).catch(function () { return false; });
     }
-    return head('portraits/sheet.png').then(function (ok) {
-      if (ok) { window.PORTRAIT_MODE = 'sprite'; return; }
-      return head('portraits/default.png').then(function (ok2) {
-        if (ok2) window.PORTRAIT_MODE = 'single';
+    return head('portraits/default.png').then(function (ok) {
+      if (ok) { window.PORTRAIT_MODE = 'single'; return; }
+      return head('portraits/sheet.png').then(function (ok2) {
+        if (ok2) window.PORTRAIT_MODE = 'sprite';
       });
     });
   })();

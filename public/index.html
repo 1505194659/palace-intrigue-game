@@ -334,10 +334,22 @@
   .class-card { gap:4px; padding:8px 6px; }
   .class-card .portrait-wrap { width:60px; height:84px; margin-bottom:2px; display:block; }
   .class-card .portrait-wrap .portrait { width:100%; height:100%; }
-  /* single 模式（6 张独立 5:7 PNG）：稍微高一点的紧凑卡片 */
-  body[data-portrait-mode="single"] .class-card .portrait-wrap { width:64px; height:90px; }
+  /* single 模式（6 张独立立绘，1:2.5）：竖向立绘卡片 */
+  body[data-portrait-mode="single"] .class-card { min-height:180px; }
+  body[data-portrait-mode="single"] .class-card .portrait-wrap { width:56px; height:140px; }
+  @media (max-width:420px) {
+    body[data-portrait-mode="single"] .class-grid { grid-template-columns:repeat(3,1fr); gap:6px; }
+    body[data-portrait-mode="single"] .class-card { min-height:165px; }
+    body[data-portrait-mode="single"] .class-card .portrait-wrap { width:50px; height:125px; }
+  }
+  @media (max-width:360px) {
+    body[data-portrait-mode="single"] .class-card { min-height:150px; }
+    body[data-portrait-mode="single"] .class-card .portrait-wrap { width:44px; height:110px; }
+    body[data-portrait-mode="single"] .class-card .name { font-size:12px; }
+    body[data-portrait-mode="single"] .class-card .desc { font-size:10px; }
+  }
 
-  /* sprite 模式（1 张大整版图）：高条卡片 */
+  /* sprite 模式（1 张大整版图，1:4）：超高条卡片 */
   body[data-portrait-mode="sprite"] .class-card { min-height:240px; }
   body[data-portrait-mode="sprite"] .class-card .portrait-wrap { width:54px; height:216px; }
   @media (max-width:420px) {
@@ -348,8 +360,6 @@
   @media (max-width:360px) {
     body[data-portrait-mode="sprite"] .class-card { min-height:190px; }
     body[data-portrait-mode="sprite"] .class-card .portrait-wrap { width:40px; height:160px; }
-    body[data-portrait-mode="sprite"] .class-card .name { font-size:12px; }
-    body[data-portrait-mode="sprite"] .class-card .desc { font-size:10px; }
   }
 
   /* pcard 角落小立绘（保持 1:1.7 视窗比例，避免太占位） */
