@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>头像裁切调试 · 后宫风云</title>
+<style>
+  :root { --red:#8b1a1a; --deep:#5b1a1a; --gold:#b8862a; --ink:#2b1810; --paper:#fff8e7; --line:#8b6a3d; }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; min-height:100vh; color:var(--ink);
+    font-family:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
+    background:
+      linear-gradient(180deg, rgba(255,248,231,.78), rgba(240,226,199,.9)),
+      url("ui/game-palace-bg.jpg") center / cover fixed no-repeat;
+  }
+  .wrap { max-width:1120px; margin:0 auto; padding:18px 14px 34px; }
+  h1 { margin:0 0 14px; text-align:center; color:var(--deep); letter-spacing:.18em; }
+  .panel {
+    background:rgba(255,248,231,.88); border:1px solid rgba(139,106,61,.72);
+    border-radius:8px; box-shadow:0 6px 20px rgba(80,40,20,.16), inset 0 0 0 1px rgba(255,255,255,.45);
+    padding:14px; margin-bottom:12px;
+  }
+  .top { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end; }
+  label { display:block; font-size:13px; color:#5b3a26; margin-bottom:8px; }
+  input, select, button {
+    font:inherit; border:1px solid var(--line); border-radius:5px; background:var(--paper); color:var(--ink);
+  }
+  input, select { width:100%; padding:9px 10px; }
+  button { cursor:pointer; padding:10px 14px; color:var(--deep); }
+  button.primary { background:linear-gradient(180deg,var(--red),var(--deep)); color:#fbe9c2; border-color:var(--deep); }
+  .grid { display:grid; grid-template-columns:minmax(300px, 1fr) 300px; gap:14px; align-items:start; }
+  .stage {
+    position:relative; overflow:auto; min-height:360px; padding:12px; border:1px solid rgba(139,106,61,.55);
+    background:rgba(255,255,255,.42); border-radius:8px;
+  }
+  #sourceCanvas { display:block; max-width:100%; height:auto; border-radius:6px; box-shadow:0 2px 8px rgba(80,40,20,.15); }
+  .side { display:grid; gap:12px; }
+  .avatar {
+    width:160px; height:160px; border-radius:50%; overflow:hidden; margin:4px auto 10px;
+    border:3px solid var(--gold); background:#fbe9c2; box-shadow:0 3px 12px rgba(80,40,20,.22);
+  }
+  #previewCanvas { width:100%; height:100%; display:block; }
+  .controls { display:grid; gap:8px; }
+  .range-row { display:grid; grid-template-columns:70px 1fr 54px; gap:8px; align-items:center; font-size:13px; }
+  input[type=range] { padding:0; }
+  .roles { display:grid; grid-template-columns:repeat(6, 1fr); gap:8px; }
+  .role {
+    min-height:46px; background:rgba(255,248,231,.8); border:1px solid rgba(184,134,42,.6);
+  }
+  .role.active { background:linear-gradient(180deg,#fff2cf,#edd39c); border-color:var(--red); color:var(--deep); font-weight:bold; }
+  .hint { font-size:12px; color:#6b4a2f; line-height:1.7; }
+  .status { min-height:22px; font-size:13px; color:var(--deep); }
+  .thumbs { display:grid; grid-template-columns:repeat(6, 1fr); gap:10px; }
+  .thumb { text-align:center; font-size:12px; color:#5b3a26; }
+  .thumb img { width:58px; height:58px; border-radius:50%; border:2px solid var(--gold); object-fit:cover; background:#fbe9c2; }
+  @media (max-width:800px) {
+    .grid, .top { grid-template-columns:1fr; }
+    .roles, .thumbs { grid-template-columns:repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>头像裁切调试</h1>
+  <div class="panel top">
+    <label>管理 Token
+      <input id="token" type="password" placeholder="默认 CHANGE_ME_NOW，线上请填管理 token" />
+    </label>
+    <div>
+      <button id="save" class="primary">保存当前头像</button>
+      <button id="reset">恢复默认参数</button>
+      <a href="/" style="margin-left:8px; color:var(--deep);">返回游戏</a>
+    </div>
+  </div>
+
+  <div class="panel roles" id="roles"></div>
+
+  <div class="grid">
+    <div class="stage">
+      <canvas id="sourceCanvas" width="480" height="357"></canvas>
+    </div>
+    <div class="side">
+      <div class="panel">
+        <div class="avatar"><canvas id="previewCanvas" width="160" height="160"></canvas></div>
+        <div class="controls">
+          <div class="range-row"><span>水平</span><input id="cx" type="range" min="120" max="360" step="1" /><b id="cxv"></b></div>
+          <div class="range-row"><span>垂直</span><input id="cy" type="range" min="110" max="240" step="1" /><b id="cyv"></b></div>
+          <div class="range-row"><span>大小</span><input id="size" type="range" min="190" max="290" step="1" /><b id="sizev"></b></div>
+        </div>
+        <p class="hint">拖动滑杆会实时更新圆头像。红框是裁切区域；点“保存当前头像”会把 160×160 JPG 写回服务器的 <code>public/portraits/heads/</code>。</p>
+        <div class="status" id="status"></div>
+      </div>
+      <div class="panel">
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ROLES = [
+  ['default', '良家'], ['talent', '才女'], ['seductress', '妖姬'],
+  ['schemer', '心机'], ['noble', '嫡女'], ['healer', '神医']
+];
+const DEFAULTS = {
+  default: { cx: 272, cy: 120, size: 240 },
+  talent: { cx: 280, cy: 120, size: 240 },
+  seductress: { cx: 306, cy: 120, size: 240 },
+  schemer: { cx: 308, cy: 120, size: 240 },
+  noble: { cx: 308, cy: 120, size: 240 },
+  healer: { cx: 288, cy: 120, size: 240 }
+};
+const $ = (id) => document.getElementById(id);
+const state = JSON.parse(localStorage.getItem('headCropState') || 'null') || structuredClone(DEFAULTS);
+let current = 'default';
+let img = new Image();
+img.crossOrigin = 'anonymous';
+
+$('token').value = localStorage.getItem('adminToken') || 'CHANGE_ME_NOW';
+
+function saveState() { localStorage.setItem('headCropState', JSON.stringify(state)); }
+function setStatus(text) { $('status').textContent = text; }
+
+function renderRoleButtons() {
+  $('roles').innerHTML = ROLES.map(([id, name]) => `<button class="role${id === current ? ' active' : ''}" data-id="${id}">${name}</button>`).join('');
+  document.querySelectorAll('.role').forEach((btn) => btn.onclick = () => selectRole(btn.dataset.id));
+}
+
+function renderThumbs() {
+  const t = Date.now();
+  $('thumbs').innerHTML = ROLES.map(([id, name]) =>
+    `<div class="thumb"><img src="portraits/heads/${id}.jpg?t=${t}" alt=""><div>${name}</div></div>`
+  ).join('');
+}
+
+function selectRole(id) {
+  current = id;
+  renderRoleButtons();
+  const c = state[current];
+  $('cx').value = c.cx; $('cy').value = c.cy; $('size').value = c.size;
+  loadImage();
+}
+
+function loadImage() {
+  img = new Image();
+  img.onload = draw;
+  img.src = `portraits/${current}.jpg?t=${Date.now()}`;
+}
+
+function clampCrop(c) {
+  const half = c.size / 2;
+  c.cx = Math.max(half, Math.min(img.width - half, Number(c.cx)));
+  c.cy = Math.max(half, Math.min(img.height - half, Number(c.cy)));
+}
+
+function draw() {
+  const c = state[current];
+  c.cx = Number($('cx').value); c.cy = Number($('cy').value); c.size = Number($('size').value);
+  clampCrop(c);
+  $('cx').value = Math.round(c.cx); $('cy').value = Math.round(c.cy); $('size').value = Math.round(c.size);
+  $('cxv').textContent = Math.round(c.cx); $('cyv').textContent = Math.round(c.cy); $('sizev').textContent = Math.round(c.size);
+  saveState();
+
+  const source = $('sourceCanvas');
+  source.width = img.width; source.height = img.height;
+  const sctx = source.getContext('2d');
+  sctx.clearRect(0, 0, source.width, source.height);
+  sctx.drawImage(img, 0, 0);
+  const x = c.cx - c.size / 2;
+  const y = c.cy - c.size / 2;
+  sctx.save();
+  sctx.strokeStyle = '#e23b66';
+  sctx.lineWidth = 3;
+  sctx.setLineDash([8, 5]);
+  sctx.strokeRect(x, y, c.size, c.size);
+  sctx.restore();
+
+  const p = $('previewCanvas');
+  const pctx = p.getContext('2d');
+  pctx.clearRect(0, 0, 160, 160);
+  pctx.drawImage(img, x, y, c.size, c.size, 0, 0, 160, 160);
+}
+
+function currentJpeg() {
+  const c = state[current];
+  const out = document.createElement('canvas');
+  out.width = 160; out.height = 160;
+  const ctx = out.getContext('2d');
+  ctx.drawImage(img, c.cx - c.size / 2, c.cy - c.size / 2, c.size, c.size, 0, 0, 160, 160);
+  return out.toDataURL('image/jpeg', 0.9);
+}
+
+async function saveCurrent() {
+  localStorage.setItem('adminToken', $('token').value);
+  setStatus('保存中...');
+  const res = await fetch('/api/admin/portrait-head', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': $('token').value },
+    body: JSON.stringify({ id: current, image: currentJpeg() })
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.ok) throw new Error(json.error || '保存失败');
+  setStatus(`已保存 ${json.file} (${json.bytes} bytes)`);
+  renderThumbs();
+}
+
+['cx', 'cy', 'size'].forEach((id) => $(id).addEventListener('input', draw));
+$('save').onclick = () => saveCurrent().catch((e) => setStatus(e.message));
+$('reset').onclick = () => {
+  state[current] = { ...DEFAULTS[current] };
+  selectRole(current);
+};
+
+renderThumbs();
+selectRole(current);
+</script>
+</body>
+</html>

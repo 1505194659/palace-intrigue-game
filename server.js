@@ -8,6 +8,7 @@
  */
 
 const express = require('express');
+const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
@@ -21,7 +22,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' }, pingTimeout: 60000 });
 
-app.use(express.json({ limit: '128kb' }));
+app.use(express.json({ limit: '512kb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
   // 立绘/PNG/JPG 等静态资源浏览器缓存 30 天, HTML 不缓存
   maxAge: '30d',
@@ -87,6 +88,28 @@ app.get('/api/admin/stats', checkToken, (req, res) => {
     gomokuRooms: Array.from(rooms.values()).filter((r) => r.mode === 'gomoku').length,
     activeRooms: Array.from(rooms.values()).filter((r) => r.players.length === 2).length,
   });
+});
+
+app.post('/api/admin/portrait-head', checkToken, (req, res) => {
+  try {
+    const allowed = new Set(['default', 'talent', 'seductress', 'schemer', 'noble', 'healer']);
+    const id = String((req.body && req.body.id) || '');
+    const image = String((req.body && req.body.image) || '');
+    if (!allowed.has(id)) return res.status(400).json({ ok: false, error: '未知角色' });
+    const m = image.match(/^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/);
+    if (!m) return res.status(400).json({ ok: false, error: '只支持 JPEG data URL' });
+    const buf = Buffer.from(m[1], 'base64');
+    if (buf.length < 1024 || buf.length > 220 * 1024) {
+      return res.status(400).json({ ok: false, error: '图片大小异常' });
+    }
+    const dir = path.join(__dirname, 'public', 'portraits', 'heads');
+    fs.mkdirSync(dir, { recursive: true });
+    const out = path.join(dir, `${id}.jpg`);
+    fs.writeFileSync(out, buf);
+    res.json({ ok: true, file: `portraits/heads/${id}.jpg`, bytes: buf.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // 公开元数据：职业列表 + 决斗池信息（供前端展示）

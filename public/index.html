@@ -118,8 +118,8 @@
     padding:10px; margin-bottom:12px;
     border:1px solid rgba(139,106,61,0.7); border-radius:8px;
     background:
-      linear-gradient(180deg, rgba(255,248,231,0.62), rgba(240,226,199,0.78)),
-      url("ui/game-palace-bg.jpg") center / cover no-repeat;
+      linear-gradient(180deg, rgba(255,248,231,0.36), rgba(240,226,199,0.58)),
+      url("ui/game-palace-bg.jpg") center / 100% 100% no-repeat;
     box-shadow:0 8px 22px rgba(80,40,20,0.20), inset 0 0 0 1px rgba(255,255,255,0.45);
     overflow:hidden;
   }
@@ -237,7 +237,17 @@
     50% { box-shadow:0 3px 8px rgba(184,134,42,0.18), inset 0 0 0 1px rgba(255,255,255,0.60); }
   }
   .act-btn .em { font-size:24px; margin-bottom:5px; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
-                 border-radius:50%; background:rgba(255,248,231,0.62); border:1px solid rgba(184,134,42,0.38); }
+                 border-radius:50%; background:rgba(255,248,231,0.62); border:1px solid rgba(184,134,42,0.38);
+                 background-image:url("ui/action-icons.jpg"); background-size:400% 200%; background-repeat:no-repeat;
+                 color:transparent; text-shadow:none; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.45); }
+  .act-btn[data-action="serve"] .em { background-position:0% 0%; }
+  .act-btn[data-action="train_talent"] .em { background-position:33.333% 0%; }
+  .act-btn[data-action="train_beauty"] .em { background-position:66.666% 0%; }
+  .act-btn[data-action="build_power"] .em { background-position:100% 0%; }
+  .act-btn[data-action="sabotage"] .em { background-position:0% 100%; }
+  .act-btn[data-action="defend"] .em { background-position:33.333% 100%; }
+  .act-btn[data-action="try_child"] .em { background-position:66.666% 100%; }
+  .act-btn[data-action="promote"] .em { background-position:100% 100%; }
   .act-btn .lbl { font-size:13px; letter-spacing:0.1em; }
   .act-btn:disabled { opacity:0.4; }
   .act-btn.chosen { background:linear-gradient(180deg,var(--red),var(--red-deep)); color:#fbe9c2; border-color:var(--red-deep); box-shadow:0 3px 10px rgba(91,26,26,0.28); }
@@ -968,6 +978,7 @@ function renderActionButtons() {
   for (const def of ACTION_DEFS) {
     const btn = document.createElement('button');
     btn.className = 'act-btn';
+    btn.dataset.action = def.id;
     btn.title = def.tip;
     btn.innerHTML = `<span class="em">${def.em}</span><span class="lbl">${def.label}</span>`;
     let disabled = false;
