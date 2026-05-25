@@ -690,6 +690,22 @@ io.on('connection', (socket) => {
     broadcastRoom(room);
   });
 
+  socket.on('discard_card', ({ cardId } = {}) => {
+    const room = findRoomBySocket(socket.id);
+    if (!room || room.mode !== 'palace' || room.phase === 'ended') return;
+    const me = room.players.find((p) => p.socketId === socket.id);
+    if (!me) return;
+    useRoomConfig(room);
+    const log = [];
+    const r = game.discardCard(me.state, cardId, log);
+    if (!r.ok) {
+      socket.emit('error_msg', r.reason || '弃置失败');
+      return;
+    }
+    if (log.length) room.log.push(...log);
+    broadcastRoom(room);
+  });
+
   // 通用决斗动作（gomoku/rps/guess 都用此事件）
   socket.on('duel_action', (payload = {}) => {
     const room = findRoomBySocket(socket.id);

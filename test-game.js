@@ -22,7 +22,7 @@
 const game = require('./game');
 const {
   newPlayerState, applyAction, resolveTurn, isActionLegal, calcScore, checkEnd,
-  publicView, MAX_TURNS, ACTIONS, RANK_NAMES, makeRng,
+  publicView, MAX_TURNS, ACTIONS, RANK_NAMES, makeRng, discardCard,
 } = game;
 
 let passed = 0;
@@ -517,7 +517,41 @@ section('14. 边缘场景', () => {
     assert(r.ended, '双皇后判定结束');
   }
 
-  // 14.5 极端：条件不足时 promote 应该失败且不改变 rank
+  // 14.5 手牌玉佩被动触发后应自动消耗
+  {
+    const a = newPlayerState('A');
+    const b = newPlayerState('B');
+    a.scheme = 100;
+    b.scheme = 0;
+    b.favor = 80;
+    b.cards = [
+      { id: 'jade_pendant', name: '玉佩', icon: '💍' },
+      { id: 'jade_pendant', name: '玉佩', icon: '💍' },
+      { id: 'poison_tea', name: '鸩茶', icon: '🍵' },
+    ];
+    const r = resolveTurn(a, b, 'sabotage', 'train_talent', 1, () => 0, { forceSabotageA: 'hit' });
+    assertEq(b.favor, 80, '玉佩自动挡住陷害伤害');
+    assertEq(b.cards.length, 2, '玉佩触发后从手牌消耗 1 张');
+    assertEq(b.cards.filter((c) => c.id === 'jade_pendant').length, 1, '只消耗一张玉佩');
+    assert(r.log.some((l) => l.includes('玉佩') && l.includes('阴谋无效')), '玉佩触发应写入日志');
+  }
+
+  // 14.6 弃置卡牌可释放手牌格子
+  {
+    const a = newPlayerState('A');
+    a.cards = [
+      { id: 'jade_pendant', name: '玉佩', icon: '💍' },
+      { id: 'jade_pendant', name: '玉佩', icon: '💍' },
+      { id: 'jade_pendant', name: '玉佩', icon: '💍' },
+    ];
+    const log = [];
+    const r = discardCard(a, 'jade_pendant', log);
+    assert(r.ok, '弃置玉佩成功');
+    assertEq(a.cards.length, 2, '弃置后手牌减少');
+    assert(log.some((l) => l.includes('弃置') && l.includes('玉佩')), '弃置应写入日志');
+  }
+
+  // 14.7 极端：条件不足时 promote 应该失败且不改变 rank
   {
     const rng = makeRng(44);
     const a = newPlayerState('A');

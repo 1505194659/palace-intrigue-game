@@ -87,6 +87,17 @@ function getCardById(id) {
   return _cardsList().find((c) => c.id === id) || null;
 }
 
+function consumePassiveCard(state, effect) {
+  if (!state || !Array.isArray(state.cards)) return null;
+  const idx = state.cards.findIndex((held) => {
+    const card = getCardById(held.id);
+    return card && card.type === 'passive' && card.effect === effect;
+  });
+  if (idx < 0) return null;
+  const [held] = state.cards.splice(idx, 1);
+  return getCardById(held.id) || held;
+}
+
 function drawCard(rng) {
   rng = rng || Math.random;
   const list = _cardsList();
@@ -170,6 +181,19 @@ function useCard(self, other, cardId, log) {
     default:
       log.push(`${card.icon || '🎴'} ${self.name} 使用了「${card.name}」`);
   }
+  return { ok: true, card };
+}
+
+function discardCard(self, cardId, log) {
+  const c = _cardsCfg();
+  if (!c.enabled) return { ok: false, reason: '卡牌系统已关闭' };
+  if (!self.cards || !self.cards.find((x) => x.id === cardId)) {
+    return { ok: false, reason: '你没有这张卡' };
+  }
+  const idx = self.cards.findIndex((c) => c.id === cardId);
+  const [held] = self.cards.splice(idx, 1);
+  const card = getCardById(held.id) || held;
+  if (log) log.push(`🗑️ ${self.name} 弃置了「${card.name || held.name || held.id}」`);
   return { ok: true, card };
 }
 
@@ -376,9 +400,12 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
       }
       if (success) {
         // 玉佩被动：自动免疫一次陷害
-        if (other.shields && other.shields.sabotage) {
-          delete other.shields.sabotage;
-          log.push(`💍 ${other.name} 玉佩生辉，${self.name} 阴谋无效`);
+        const shieldedByUsedJade = other.shields && other.shields.sabotage;
+        const passiveJade = shieldedByUsedJade ? null : consumePassiveCard(other, 'shield_sabotage');
+        if (shieldedByUsedJade || passiveJade) {
+          if (shieldedByUsedJade) delete other.shields.sabotage;
+          const jadeName = passiveJade ? (passiveJade.name || '玉佩') : '玉佩';
+          log.push(`💍 ${other.name} ${jadeName}生辉，${self.name} 阴谋无效`);
           self.scheme = clamp(self.scheme - 2, 0, 100);
           break;
         }
@@ -639,7 +666,7 @@ module.exports = {
   newPlayerState, publicView, calcScore,
   isActionLegal, applyAction, resolveTurn, checkEnd,
   // 卡牌
-  drawCard, useCard, isCardLegal, getCardById,
+  drawCard, useCard, discardCard, isCardLegal, getCardById,
   onTurnStart, onTurnEnd,
   makeRng, clamp,
 };

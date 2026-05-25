@@ -1159,7 +1159,7 @@ function renderExtras(target, st) {
   $(target).innerHTML = html || '<span style="opacity:0.5">—</span>';
 }
 
-function showCardDetail(card, meta, canUse, onUse) {
+function showCardDetail(card, meta, canUse, onUse, onDiscard) {
   const bg = document.createElement('div');
   bg.className = 'card-modal-bg';
   const typeLabel = meta.type === 'passive' ? '被动' : (meta.type === 'active' ? '主动' : '');
@@ -1170,6 +1170,7 @@ function showCardDetail(card, meta, canUse, onUse) {
     <div class="desc">${meta.description || '（无说明）'}</div>
     <div class="btn-row">
       <button class="ghost" id="cm-cancel">关 闭</button>
+      <button class="ghost" id="cm-discard">弃 置</button>
       ${canUse ? '<button class="primary" id="cm-use">立 即 使 用</button>' : ''}
     </div>
   </div>`;
@@ -1177,6 +1178,8 @@ function showCardDetail(card, meta, canUse, onUse) {
   document.body.appendChild(bg);
   const cancel = bg.querySelector('#cm-cancel');
   if (cancel) cancel.onclick = () => bg.remove();
+  const discard = bg.querySelector('#cm-discard');
+  if (discard) discard.onclick = () => { bg.remove(); onDiscard(); };
   const use = bg.querySelector('#cm-use');
   if (use) use.onclick = () => { bg.remove(); onUse(); };
 }
@@ -1200,6 +1203,8 @@ function renderHand(you) {
         && isActive;
       showCardDetail(card, meta, canUseNow, () => {
         socket.emit('use_card', { cardId: card.id });
+      }, () => {
+        socket.emit('discard_card', { cardId: card.id });
       });
     };
     hand.appendChild(div);
