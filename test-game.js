@@ -494,7 +494,20 @@ section('14. 边缘场景', () => {
     assertEq(a.imprisoned, 0, '一回合后解除禁足');
   }
 
-  // 14.3 同时升至皇后
+  // 14.3 新禁足下月生效
+  {
+    const a = newPlayerState('A');
+    const b = newPlayerState('B');
+    a.scheme = 100;
+    b.scheme = 0;
+    resolveTurn(a, b, 'sabotage', 'train_talent', 1, () => 0, { forceSabotageA: 'hit' });
+    assertEq(b.imprisoned, 1, '当月新禁足结算后仍保留 1 月');
+    assert(!isActionLegal(b, 'train_talent'), '下月禁足时不能习才艺');
+    resolveTurn(a, b, 'defend', 'defend', 2, () => 0);
+    assertEq(b.imprisoned, 0, '禁足实际生效一回合后解除');
+  }
+
+  // 14.4 同时升至皇后
   {
     const a = newPlayerState('A');
     const b = newPlayerState('B');
@@ -504,7 +517,7 @@ section('14. 边缘场景', () => {
     assert(r.ended, '双皇后判定结束');
   }
 
-  // 14.4 极端：条件不足时 promote 应该失败且不改变 rank
+  // 14.5 极端：条件不足时 promote 应该失败且不改变 rank
   {
     const rng = makeRng(44);
     const a = newPlayerState('A');

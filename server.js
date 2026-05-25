@@ -91,6 +91,26 @@ app.get('/api/admin/stats', checkToken, (req, res) => {
   });
 });
 
+app.get('/api/admin/rooms', checkToken, (req, res) => {
+  const list = Array.from(rooms.values())
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map(summarizeRoom);
+  res.json({ ok: true, rooms: list });
+});
+
+app.post('/api/admin/rooms/:code/end', checkToken, (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const room = rooms.get(code);
+  if (!room) return res.status(404).json({ ok: false, error: '房间不存在' });
+  clearTimeoutIfAny(room);
+  room.phase = 'ended';
+  room.duel = null;
+  room.pendingActions = null;
+  room.log.push('🛠️ 管理员已结束此房间');
+  broadcastRoom(room);
+  res.json({ ok: true, room: summarizeRoom(room) });
+});
+
 app.post('/api/admin/portrait-head', checkToken, (req, res) => {
   try {
     const allowed = new Set(['default', 'talent', 'seductress', 'schemer', 'noble', 'healer']);
@@ -230,6 +250,35 @@ function leaveRoom(room, player, message) {
   room.duel = null;
   room.pendingActions = null;
   broadcastRoom(room);
+}
+
+function summarizeRoom(room) {
+  return {
+    code: room.code,
+    mode: room.mode,
+    phase: room.phase,
+    turn: room.turn,
+    maxTurns: room.config && room.config.palace ? room.config.palace.maxTurns : null,
+    createdAt: room.createdAt,
+    playerCount: room.players.length,
+    duel: room.duel ? {
+      id: room.duel.module.id,
+      name: room.duel.module.name,
+      kind: room.duel.kind,
+    } : null,
+    players: room.players.map((p) => ({
+      name: p.state && p.state.name,
+      role: p.role || 'guest',
+      connected: !!p.socketId,
+      classId: p.state && p.state.classId,
+      rankName: p.state && typeof p.state.rank === 'number' ? game.RANK_NAMES[p.state.rank] : null,
+      score: p.score || 0,
+      actionReady: !!p.action,
+      rematchReady: !!p.rematchReady,
+      disconnectedAt: p.disconnectedAt || null,
+    })),
+    logTail: room.log.slice(-6).map((item) => (typeof item === 'string' ? item : item && item.text)).filter(Boolean),
+  };
 }
 
 function useRoomConfig(room) {

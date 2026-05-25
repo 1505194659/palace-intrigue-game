@@ -402,7 +402,7 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
           }
         }
         if (randInt(1, 100, rng) <= 22) {
-          other.imprisoned = 1;
+          other.imprisoned = Math.max(other.imprisoned || 0, 2);
           log.push(`⛓️ ${E}震怒，${other.name} 禁足 1 月`);
         }
         self.scheme = clamp(self.scheme + 2, 0, 100);
@@ -415,7 +415,7 @@ function applyAction(self, other, action, log, rng, forceSabotage) {
         self.scheme = clamp(self.scheme - 2, 0, 100);
         // 25% 概率反被禁足 1 月（弄巧成拙）
         if (randInt(1, 100, rng) <= 25) {
-          self.imprisoned = 1;
+          self.imprisoned = Math.max(self.imprisoned || 0, 2);
           log.push(`⛓️ 阴谋败露，${self.name} 反被禁足 1 月`);
         }
       }
