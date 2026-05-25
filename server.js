@@ -39,6 +39,20 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 const PORT = process.env.PORT || 3000;
 
+const BAD_NAME_PATTERNS = [
+  /是\s*(猪|狗|傻|废物|垃圾|畜生)/i,
+  /(傻\s*[b逼屄]|煞笔|脑残|智障|废物|垃圾|畜生|你妈|他妈|滚|去死)/i,
+  /(nmsl|sb|shabi|fuck|shit)/i,
+];
+
+function cleanPlayerName(name, fallback) {
+  let value = String(name || '').trim().replace(/\s+/g, '');
+  value = value.slice(0, 8);
+  if (!value) return fallback;
+  if (BAD_NAME_PATTERNS.some((re) => re.test(value))) return fallback;
+  return value;
+}
+
 // ============================================================
 // admin API
 // ============================================================
@@ -107,6 +121,28 @@ app.post('/api/admin/rooms/:code/end', checkToken, (req, res) => {
   room.duel = null;
   room.pendingActions = null;
   room.log.push('🛠️ 管理员已结束此房间');
+  broadcastRoom(room);
+  res.json({ ok: true, room: summarizeRoom(room) });
+});
+
+app.post('/api/admin/rooms/:code/players/:idx/name', checkToken, (req, res) => {
+  const code = String(req.params.code || '').toUpperCase();
+  const idx = Number(req.params.idx);
+  const room = rooms.get(code);
+  if (!room) return res.status(404).json({ ok: false, error: '房间不存在' });
+  if (!Number.isInteger(idx) || idx < 0 || idx >= room.players.length) {
+    return res.status(404).json({ ok: false, error: '玩家不存在' });
+  }
+  const fallback = room.mode === 'gomoku' ? '棋手' : ((room.config.appellation && room.config.appellation.concubineLabel) || '佳人');
+  const rawName = req.body && req.body.name;
+  const nextName = cleanPlayerName(rawName, fallback);
+  if (String(rawName || '').trim() && nextName === fallback && String(rawName || '').trim().slice(0, 8) !== fallback) {
+    return res.status(400).json({ ok: false, error: '昵称包含不文明称呼，请换一个' });
+  }
+  const player = room.players[idx];
+  const oldName = player.state && player.state.name;
+  player.state.name = nextName;
+  room.log.push(`🛠️ 管理员将「${oldName || '未名'}」改名为「${nextName}」`);
   broadcastRoom(room);
   res.json({ ok: true, room: summarizeRoom(room) });
 });
@@ -267,6 +303,7 @@ function summarizeRoom(room) {
       kind: room.duel.kind,
     } : null,
     players: room.players.map((p) => ({
+      index: room.players.indexOf(p),
       name: p.state && p.state.name,
       role: p.role || 'guest',
       connected: !!p.socketId,
@@ -527,7 +564,7 @@ io.on('connection', (socket) => {
       room.players.push(makePlayerSession({
         socketId: socket.id,
         role: 'host',
-        state: { name: (name || '').slice(0, 8) || '棋手' },
+        state: { name: cleanPlayerName(name, '棋手') },
         score: 0,
       }));
     } else {
@@ -536,7 +573,7 @@ io.on('connection', (socket) => {
       room.players.push(makePlayerSession({
         socketId: socket.id,
         role: 'host',
-        state: game.newPlayerState((name || '').slice(0, 8), cid),
+        state: game.newPlayerState(cleanPlayerName(name, room.config.appellation.concubineLabel || '佳人'), cid),
         action: null,
       }));
     }
@@ -557,7 +594,7 @@ io.on('connection', (socket) => {
       room.players.push(makePlayerSession({
         socketId: socket.id,
         role: 'guest',
-        state: { name: (name || '').slice(0, 8) || '棋手' },
+        state: { name: cleanPlayerName(name, '棋手') },
         score: 0,
       }));
     } else {
@@ -566,7 +603,7 @@ io.on('connection', (socket) => {
       room.players.push(makePlayerSession({
         socketId: socket.id,
         role: 'guest',
-        state: game.newPlayerState((name || '').slice(0, 8), cid),
+        state: game.newPlayerState(cleanPlayerName(name, room.config.appellation.concubineLabel || '佳人'), cid),
         action: null,
       }));
     }

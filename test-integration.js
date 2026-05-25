@@ -107,26 +107,37 @@ async function main() {
     ]);
     sa.emit('create_room', { name: '妖姬', mode: 'palace', classId: 'seductress' });
     const aJoin = await waitFor(sa, 'joined');
-    sb.emit('join_room', { code: aJoin.code, name: '嫡女', classId: 'noble' });
+    sb.emit('join_room', { code: aJoin.code, name: '沈哲琪是猪', classId: 'noble' });
     await waitFor(sb, 'joined');
 
     const sA1 = await waitFor(sa, 'state', (s) => s.phase === 'choosing' && s.you);
     assert(sA1.you.classId === 'seductress', '妖姬已设');
     assert(sA1.you.beauty === 50, '妖姬美貌 50（默认）');
     assert(sA1.opponent.classId === 'noble', '对方嫡女');
+    assert(sA1.opponent.name !== '沈哲琪是猪', `不文明昵称被替换，实际 ${sA1.opponent.name}`);
+    const renamePromise = waitFor(sa, 'state', (s) => s.opponent && s.opponent.name === '嫡女', 3000, '管理员改名同步');
+    const renameRes = await httpReq(
+      'POST',
+      `/api/admin/rooms/${aJoin.code}/players/1/name`,
+      { name: '嫡女' },
+      { 'X-Admin-Token': TK },
+    );
+    assert(renameRes.json.ok, '管理员改名接口 ok');
+    const sRename = await renamePromise;
+    assert(sRename.opponent.name === '嫡女', '管理员改名后状态同步');
     // 嫡女 power +20，所以 opponent.power=30
-    assert(sA1.opponent.power === 30, `嫡女 power 30，实际 ${sA1.opponent.power}`);
+    assert(sRename.opponent.power === 30, `嫡女 power 30，实际 ${sRename.opponent.power}`);
     // 月初抽卡（dropChance=100 应该有牌）
-    assert(sA1.you.cards && sA1.you.cards.length >= 1, `月初抽到卡，实际 ${(sA1.you.cards || []).length} 张`);
+    assert(sRename.you.cards && sRename.you.cards.length >= 1, `月初抽到卡，实际 ${(sRename.you.cards || []).length} 张`);
 
     // === 4. 出卡：自身增益 ===
     console.log('=== 4. 出卡：玩家A 出第一张卡 ===');
-    const firstCardId = sA1.you.cards[0].id;
+    const firstCardId = sRename.you.cards[0].id;
     const promiseAfterCard = waitFor(sa, 'state', (s) => s.you && s.you.usedCardThisMonth);
     sa.emit('use_card', { cardId: firstCardId });
     const sA2 = await promiseAfterCard;
     assert(sA2.you.usedCardThisMonth === true, 'usedCardThisMonth 标记');
-    assert(sA2.you.cards.length === sA1.you.cards.length - 1, '手牌少一张');
+    assert(sA2.you.cards.length === sRename.you.cards.length - 1, '手牌少一张');
 
     // === 5. 重复出卡被拒 ===
     console.log('=== 5. 重复出卡被拒 ===');
