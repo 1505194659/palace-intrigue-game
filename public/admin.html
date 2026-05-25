@@ -29,6 +29,10 @@
   button.ghost { background: #fff8e7; color: #5b1a1a; border: 1px solid #8b6a3d; }
   button.danger { background: linear-gradient(180deg, #b54040, #6b1a1a);
                   color: #fff; border: 1px solid #5b1a1a; }
+  .range-line { display:grid; grid-template-columns: 1fr 70px; gap:10px; align-items:center; }
+  input[type=range] { width:100%; accent-color:#8b1a1a; }
+  .range-value { text-align:center; color:#5b1a1a; font-weight:bold; background:#fff8e7;
+                 border:1px solid #8b6a3d; border-radius:4px; padding:6px 4px; }
   .promote-row { display: grid; grid-template-columns: 60px repeat(4, 1fr); gap: 6px; align-items: center;
                  font-size: 13px; padding: 4px 0; }
   .promote-row .lbl { color: #5b3a26; text-align: right; padding-right: 8px; }
@@ -113,6 +117,25 @@
   </div>
 
   <div class="panel">
+    <h3 style="margin-top:0">界面美化</h3>
+    <label>樱花数量</label>
+    <div class="range-line">
+      <input id="f-sakuraCount" type="range" min="20" max="120" step="5" />
+      <span class="range-value" id="v-sakuraCount">70</span>
+    </div>
+    <label>樱花速度</label>
+    <div class="range-line">
+      <input id="f-sakuraSpeed" type="range" min="50" max="220" step="10" />
+      <span class="range-value" id="v-sakuraSpeed">130%</span>
+    </div>
+    <div class="actions">
+      <button class="ghost" id="btn-sakura-default" type="button">恢复默认飘花</button>
+      <button class="ghost" id="btn-avatar-debug" type="button">打开头像调整</button>
+    </div>
+    <p class="small">保存后刷新游戏页生效；当前浏览器也会记住这组飘花参数。</p>
+  </div>
+
+  <div class="panel">
     <h3 style="margin-top:0">管理 Token（修改后请重新登录）</h3>
     <label>新 Token<input id="f-adminToken" type="text" /></label>
   </div>
@@ -131,10 +154,42 @@
 const $ = (id) => document.getElementById(id);
 let currentToken = '';
 let currentCfg = null;
+const SAKURA_SETTINGS_KEY = 'palace_sakura_settings_v1';
+const DEFAULT_UI = { sakuraCount: 70, sakuraSpeed: 130 };
 
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function clampNumber(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
+function updateSakuraLabels() {
+  $('v-sakuraCount').textContent = $('f-sakuraCount').value;
+  $('v-sakuraSpeed').textContent = $('f-sakuraSpeed').value + '%';
+}
+
+function setSakuraForm(ui) {
+  const count = clampNumber(ui && ui.sakuraCount, 20, 120, DEFAULT_UI.sakuraCount);
+  const speed = clampNumber(ui && ui.sakuraSpeed, 50, 220, DEFAULT_UI.sakuraSpeed);
+  $('f-sakuraCount').value = count;
+  $('f-sakuraSpeed').value = speed;
+  updateSakuraLabels();
+}
+
+function collectSakuraForm() {
+  return {
+    sakuraCount: clampNumber($('f-sakuraCount').value, 20, 120, DEFAULT_UI.sakuraCount),
+    sakuraSpeed: clampNumber($('f-sakuraSpeed').value, 50, 220, DEFAULT_UI.sakuraSpeed),
+  };
+}
+
+function persistSakuraLocal(ui) {
+  try { localStorage.setItem(SAKURA_SETTINGS_KEY, JSON.stringify(ui)); } catch (_) {}
 }
 
 async function api(method, path, body) {
@@ -176,6 +231,9 @@ function fillForm(c) {
   $('f-boardSize').value = c.gomoku.boardSize;
   $('f-moveTimeout').value = c.gomoku.moveTimeoutSec;
   $('f-sabotageDuel').checked = !!c.gomoku.sabotageDuel;
+  c.ui = Object.assign({}, DEFAULT_UI, c.ui || {});
+  setSakuraForm(c.ui);
+  persistSakuraLocal(c.ui);
   $('f-adminToken').value = c.adminToken;
   // 晋升门槛
   const RANK_LABELS = ['答应→常在','常在→贵人','贵人→嫔','嫔→妃','妃→贵妃','贵妃→皇贵妃','皇贵妃→皇后'];
@@ -211,6 +269,7 @@ function collectForm() {
   cfg.gomoku.boardSize = +$('f-boardSize').value;
   cfg.gomoku.moveTimeoutSec = +$('f-moveTimeout').value;
   cfg.gomoku.sabotageDuel = $('f-sabotageDuel').checked;
+  cfg.ui = collectSakuraForm();
   cfg.adminToken = $('f-adminToken').value.trim();
   // 晋升门槛
   document.querySelectorAll('#promote-grid .promote-row.editable input').forEach((el) => {
@@ -235,6 +294,7 @@ $('btn-save').onclick = async () => {
   try {
     await api('POST', '/api/admin/config', { config: cfg });
     currentCfg = cfg;
+    persistSakuraLocal(cfg.ui || DEFAULT_UI);
     fillForm(cfg);
     toast('已保存。新房间将使用新参数（已开始的对局沿用旧参数）');
   } catch (e) { toast('保存失败：' + e.message); }
@@ -270,6 +330,17 @@ $('btn-stats').onclick = async () => {
       <span>对局中：${j.activeRooms}</span>
     `;
   } catch (e) { toast(e.message); }
+};
+
+$('f-sakuraCount').addEventListener('input', updateSakuraLabels);
+$('f-sakuraSpeed').addEventListener('input', updateSakuraLabels);
+$('btn-sakura-default').onclick = () => {
+  setSakuraForm(DEFAULT_UI);
+  persistSakuraLocal(DEFAULT_UI);
+  toast('已恢复默认飘花，点保存后全局生效');
+};
+$('btn-avatar-debug').onclick = () => {
+  window.location.href = '/avatar-debug.html';
 };
 
 $('tk-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-login').click(); });

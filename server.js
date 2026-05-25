@@ -136,6 +136,7 @@ app.get('/api/meta', (req, res) => {
     duels: duelList,
     cards: enabledCards.map((c) => ({ id: c.id, name: c.name, icon: c.icon, description: c.description, type: c.type })),
     palace: { maxTurns: cfg.palace.maxTurns },
+    ui: cfg.ui || { sakuraCount: 70, sakuraSpeed: 130 },
   });
 });
 
