@@ -194,6 +194,12 @@
   }
   @keyframes palace-sheen { 0%,45% { transform:translateX(-130%); } 70%,100% { transform:translateX(130%); } }
   .turn-bar .turn-num { font-size:18px; font-weight:bold; color:#ffd278; }
+  .leave-btn {
+    border:1px solid rgba(251,233,194,0.72); color:#fbe9c2;
+    background:rgba(255,248,231,0.08); border-radius:4px;
+    padding:5px 9px; font-size:12px; letter-spacing:0.08em;
+  }
+  .leave-btn:active { transform:translateY(1px); }
 
   .players { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .pcard { background:rgba(255,248,231,0.88); border:1px solid rgba(139,106,61,0.78); border-radius:8px;
@@ -767,6 +773,7 @@
     <div class="room-code" id="room-code">-----</div>
     <p class="hint">把房间号告诉对手，让她在另一台手机/浏览器输码加入。</p>
     <button class="ghost" id="btn-copy" style="width:100%; margin-top:6px;">复 制 房 间 号</button>
+    <button class="ghost" id="btn-leave-lobby" style="width:100%; margin-top:8px;">退出房间</button>
   </section>
 
   <!-- 宫斗游戏屏 -->
@@ -774,6 +781,7 @@
     <div class="turn-bar">
       <span>第 <span class="turn-num" id="turn-num">1</span> 月 / 共 <span id="max-turns">15</span> 月</span>
       <span id="phase-tip">请选择本月动作</span>
+      <button class="leave-btn" id="btn-leave-game" type="button">退出</button>
     </div>
 
     <div class="players">
@@ -844,6 +852,7 @@
     <div class="turn-bar">
       <span>五 子 棋 · 联 机 对 战</span>
       <span id="g-phase-tip">开局</span>
+      <button class="leave-btn" id="btn-leave-gomoku" type="button">退出</button>
     </div>
     <div class="duel-score">
       <span class="me"><span id="g-you-name">你</span> · <span id="g-you-color">—</span> <span id="g-you-score">0</span></span>
@@ -935,6 +944,16 @@ function loadRoomSession() {
 }
 function saveRoomSession(data) {
   try { sessionStorage.setItem(ROOM_SESSION_KEY, JSON.stringify(data)); } catch (_) {}
+}
+function clearRoomSession() {
+  currentRoomCode = null;
+  currentRoomToken = null;
+  currentRoomRole = null;
+  myChoice = null;
+  lastState = null;
+  lastLogTotal = -1;
+  lastGLogTotal = -1;
+  try { sessionStorage.removeItem(ROOM_SESSION_KEY); } catch (_) {}
 }
 function tryReconnectRoom() {
   const saved = loadRoomSession();
@@ -1065,6 +1084,22 @@ $('btn-copy').onclick = async () => {
   const ok = await copyText(currentRoomCode);
   showToast(ok ? '房间号已复制' : '复制失败，请长按房间号复制：' + currentRoomCode);
 };
+function leaveCurrentRoom() {
+  if (!currentRoomCode) {
+    clearRoomSession();
+    showScreen('entry');
+    return;
+  }
+  if (!confirm('确定退出当前房间吗？')) return;
+  socket.emit('leave_room', { code: currentRoomCode, token: currentRoomToken });
+  clearRoomSession();
+  hideDuelOverlay();
+  showScreen('entry');
+  showToast('已退出房间');
+}
+$('btn-leave-lobby').onclick = leaveCurrentRoom;
+$('btn-leave-game').onclick = leaveCurrentRoom;
+$('btn-leave-gomoku').onclick = leaveCurrentRoom;
 
 // 行动按钮渲染
 function renderActionButtons() {
@@ -1693,7 +1728,7 @@ function setMiniPortrait(elId, classId) {
   const cxt = canvas.getContext('2d');
   const img = new Image();
   const SAKURA_SETTINGS_KEY = 'palace_sakura_settings_v1';
-  const DEFAULT_SAKURA_SETTINGS = { sakuraCount: 70, sakuraSpeed: 130 };
+  const DEFAULT_SAKURA_SETTINGS = { sakuraCount: 45, sakuraSpeed: 80 };
   let stop;
   let dpr = 1;
   let sakuraList;
@@ -1709,8 +1744,8 @@ function setMiniPortrait(elId, classId) {
     try {
       const stored = JSON.parse(localStorage.getItem(SAKURA_SETTINGS_KEY) || 'null') || {};
       return {
-        sakuraCount: clampNumber(stored.sakuraCount, 20, 120, DEFAULT_SAKURA_SETTINGS.sakuraCount),
-        sakuraSpeed: clampNumber(stored.sakuraSpeed, 50, 220, DEFAULT_SAKURA_SETTINGS.sakuraSpeed),
+        sakuraCount: clampNumber(stored.sakuraCount, 0, 120, DEFAULT_SAKURA_SETTINGS.sakuraCount),
+        sakuraSpeed: clampNumber(stored.sakuraSpeed, 10, 220, DEFAULT_SAKURA_SETTINGS.sakuraSpeed),
       };
     } catch (_) {
       return Object.assign({}, DEFAULT_SAKURA_SETTINGS);
@@ -1719,8 +1754,8 @@ function setMiniPortrait(elId, classId) {
 
   function setSakuraSettings(next) {
     sakuraSettings = {
-      sakuraCount: clampNumber(next && next.sakuraCount, 20, 120, DEFAULT_SAKURA_SETTINGS.sakuraCount),
-      sakuraSpeed: clampNumber(next && next.sakuraSpeed, 50, 220, DEFAULT_SAKURA_SETTINGS.sakuraSpeed),
+      sakuraCount: clampNumber(next && next.sakuraCount, 0, 120, DEFAULT_SAKURA_SETTINGS.sakuraCount),
+      sakuraSpeed: clampNumber(next && next.sakuraSpeed, 10, 220, DEFAULT_SAKURA_SETTINGS.sakuraSpeed),
     };
     try { localStorage.setItem(SAKURA_SETTINGS_KEY, JSON.stringify(sakuraSettings)); } catch (_) {}
   }
@@ -1837,6 +1872,10 @@ function setMiniPortrait(elId, classId) {
     const sakuraNum = window.innerWidth < 700
       ? Math.round(sakuraSettings.sakuraCount * 0.75)
       : sakuraSettings.sakuraCount;
+    if (sakuraNum <= 0) {
+      cxt.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
     for (let i = 0; i < sakuraNum; i++) {
       const sakura = new Sakura(
         getRandom('x'),

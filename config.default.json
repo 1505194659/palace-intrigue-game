@@ -39,8 +39,8 @@
     "guessTimeoutSec": 15
   },
   "ui": {
-    "sakuraCount": 70,
-    "sakuraSpeed": 130
+    "sakuraCount": 45,
+    "sakuraSpeed": 80
   },
   "classes": {
     "_comment": "角色职业。建房时双方各选一个，不可重复也允许重复（看双方默契）。",

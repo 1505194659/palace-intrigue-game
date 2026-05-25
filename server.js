@@ -136,7 +136,7 @@ app.get('/api/meta', (req, res) => {
     duels: duelList,
     cards: enabledCards.map((c) => ({ id: c.id, name: c.name, icon: c.icon, description: c.description, type: c.type })),
     palace: { maxTurns: cfg.palace.maxTurns },
-    ui: cfg.ui || { sakuraCount: 70, sakuraSpeed: 130 },
+    ui: cfg.ui || { sakuraCount: 45, sakuraSpeed: 80 },
   });
 });
 
@@ -216,6 +216,20 @@ function markPlayerConnected(room, player, socket) {
   player.disconnectedAt = null;
   player._disconnectNotice = false;
   socket.join(room.code);
+}
+
+function leaveRoom(room, player, message) {
+  clearTimeoutIfAny(room);
+  room.players = room.players.filter((p) => p !== player);
+  if (room.players.length === 0) {
+    rooms.delete(room.code);
+    return;
+  }
+  room.log.push(message || '⚠️ 对方已退出房间');
+  room.phase = 'ended';
+  room.duel = null;
+  room.pendingActions = null;
+  broadcastRoom(room);
 }
 
 function useRoomConfig(room) {
@@ -555,6 +569,17 @@ io.on('connection', (socket) => {
     });
     room.log.push(`🔌 ${player.state.name} 已重连`);
     broadcastRoom(room);
+  });
+
+  socket.on('leave_room', ({ code, token } = {}) => {
+    code = (code || '').toUpperCase().trim();
+    token = (token || '').trim();
+    const room = findRoomBySocket(socket.id) || (code ? rooms.get(code) : null);
+    if (!room) return;
+    const player = room.players.find((p) => p.socketId === socket.id || (token && p.token === token));
+    if (!player) return;
+    socket.leave(room.code);
+    leaveRoom(room, player, `⚠️ ${player.state.name} 已退出房间`);
   });
 
   socket.on('choose_action', ({ action } = {}) => {

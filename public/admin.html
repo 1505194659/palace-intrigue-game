@@ -71,6 +71,8 @@
     <div class="actions">
       <button class="ghost" id="btn-refresh">刷新</button>
       <button class="ghost" id="btn-stats">查看在线统计</button>
+      <button class="ghost" id="btn-open-game" type="button">打开游戏页</button>
+      <button class="ghost" id="btn-open-avatar" type="button">头像调整</button>
       <button class="primary" id="btn-save">保 存</button>
       <button class="danger" id="btn-reset">重置为默认</button>
     </div>
@@ -120,19 +122,22 @@
     <h3 style="margin-top:0">界面美化</h3>
     <label>樱花数量</label>
     <div class="range-line">
-      <input id="f-sakuraCount" type="range" min="20" max="120" step="5" />
-      <span class="range-value" id="v-sakuraCount">70</span>
+      <input id="f-sakuraCount" type="range" min="0" max="120" step="5" />
+      <span class="range-value" id="v-sakuraCount">45</span>
     </div>
     <label>樱花速度</label>
     <div class="range-line">
-      <input id="f-sakuraSpeed" type="range" min="50" max="220" step="10" />
-      <span class="range-value" id="v-sakuraSpeed">130%</span>
+      <input id="f-sakuraSpeed" type="range" min="10" max="220" step="10" />
+      <span class="range-value" id="v-sakuraSpeed">80%</span>
     </div>
     <div class="actions">
+      <button class="ghost" id="btn-sakura-off" type="button">关闭飘花</button>
+      <button class="ghost" id="btn-sakura-soft" type="button">少且慢</button>
+      <button class="ghost" id="btn-sakura-rich" type="button">多且快</button>
       <button class="ghost" id="btn-sakura-default" type="button">恢复默认飘花</button>
       <button class="ghost" id="btn-avatar-debug" type="button">打开头像调整</button>
     </div>
-    <p class="small">保存后刷新游戏页生效；当前浏览器也会记住这组飘花参数。</p>
+    <p class="small">数量为 0 等于关闭飘花；保存后刷新游戏页生效，当前浏览器也会记住这组参数。</p>
   </div>
 
   <div class="panel">
@@ -155,7 +160,7 @@ const $ = (id) => document.getElementById(id);
 let currentToken = '';
 let currentCfg = null;
 const SAKURA_SETTINGS_KEY = 'palace_sakura_settings_v1';
-const DEFAULT_UI = { sakuraCount: 70, sakuraSpeed: 130 };
+const DEFAULT_UI = { sakuraCount: 45, sakuraSpeed: 80 };
 
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -174,8 +179,8 @@ function updateSakuraLabels() {
 }
 
 function setSakuraForm(ui) {
-  const count = clampNumber(ui && ui.sakuraCount, 20, 120, DEFAULT_UI.sakuraCount);
-  const speed = clampNumber(ui && ui.sakuraSpeed, 50, 220, DEFAULT_UI.sakuraSpeed);
+  const count = clampNumber(ui && ui.sakuraCount, 0, 120, DEFAULT_UI.sakuraCount);
+  const speed = clampNumber(ui && ui.sakuraSpeed, 10, 220, DEFAULT_UI.sakuraSpeed);
   $('f-sakuraCount').value = count;
   $('f-sakuraSpeed').value = speed;
   updateSakuraLabels();
@@ -183,8 +188,8 @@ function setSakuraForm(ui) {
 
 function collectSakuraForm() {
   return {
-    sakuraCount: clampNumber($('f-sakuraCount').value, 20, 120, DEFAULT_UI.sakuraCount),
-    sakuraSpeed: clampNumber($('f-sakuraSpeed').value, 50, 220, DEFAULT_UI.sakuraSpeed),
+    sakuraCount: clampNumber($('f-sakuraCount').value, 0, 120, DEFAULT_UI.sakuraCount),
+    sakuraSpeed: clampNumber($('f-sakuraSpeed').value, 10, 220, DEFAULT_UI.sakuraSpeed),
   };
 }
 
@@ -334,6 +339,14 @@ $('btn-stats').onclick = async () => {
 
 $('f-sakuraCount').addEventListener('input', updateSakuraLabels);
 $('f-sakuraSpeed').addEventListener('input', updateSakuraLabels);
+function applySakuraPreset(ui, msg) {
+  setSakuraForm(ui);
+  persistSakuraLocal(collectSakuraForm());
+  toast(msg);
+}
+$('btn-sakura-off').onclick = () => applySakuraPreset({ sakuraCount: 0, sakuraSpeed: 80 }, '已关闭飘花，点保存后全局生效');
+$('btn-sakura-soft').onclick = () => applySakuraPreset({ sakuraCount: 15, sakuraSpeed: 35 }, '已设为少且慢，点保存后全局生效');
+$('btn-sakura-rich').onclick = () => applySakuraPreset({ sakuraCount: 90, sakuraSpeed: 160 }, '已设为多且快，点保存后全局生效');
 $('btn-sakura-default').onclick = () => {
   setSakuraForm(DEFAULT_UI);
   persistSakuraLocal(DEFAULT_UI);
@@ -341,6 +354,12 @@ $('btn-sakura-default').onclick = () => {
 };
 $('btn-avatar-debug').onclick = () => {
   window.location.href = '/avatar-debug.html';
+};
+$('btn-open-avatar').onclick = () => {
+  window.location.href = '/avatar-debug.html';
+};
+$('btn-open-game').onclick = () => {
+  window.location.href = '/';
 };
 
 $('tk-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-login').click(); });

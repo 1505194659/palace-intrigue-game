@@ -127,6 +127,11 @@ function assertEq(a, b, m) { assert(a === b, `${m} — 预期 ${b}, 实际 ${a}`
   assert(bState && bState.code === roomCode, 'B 使用 token 成功重连回原房间');
   assert(aState.log.some((l) => l.includes('已重连')), '日志含"已重连"');
 
+  b2.emit('leave_room', { code: roomCode, token: bToken });
+  await delay(300);
+  assertEq(aState.phase, 'ended', 'B 主动退出后 A 进入 ended');
+  assert(aState.log.some((l) => l.includes('已退出房间')), '日志含"已退出房间"');
+
   b2.disconnect();
   a.disconnect();
 
