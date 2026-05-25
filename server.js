@@ -8,6 +8,7 @@
  */
 
 const express = require('express');
+const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -143,6 +144,7 @@ app.get('/api/meta', (req, res) => {
 // ============================================================
 
 const rooms = new Map();
+const RECONNECT_GRACE_MS = 5 * 60 * 1000;
 
 function genRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -166,11 +168,53 @@ function makeRoom(code, mode) {
   };
 }
 
+function makePlayerSession(extra) {
+  return Object.assign({
+    token: crypto.randomBytes(16).toString('hex'),
+    socketId: null,
+    role: 'guest',
+    disconnectedAt: null,
+  }, extra);
+}
+
 function findRoomBySocket(socketId) {
   for (const r of rooms.values()) {
     if (r.players.some((p) => p.socketId === socketId)) return r;
   }
   return null;
+}
+
+function scheduleDisconnectCleanup(room) {
+  if (room._disconnectTimer) clearTimeout(room._disconnectTimer);
+  room._disconnectTimer = setTimeout(() => {
+    const now = Date.now();
+    const before = room.players.length;
+    room.players = room.players.filter((p) => {
+      return p.socketId || !p.disconnectedAt || now - p.disconnectedAt < RECONNECT_GRACE_MS;
+    });
+    if (room.players.length === 0) {
+      clearTimeoutIfAny(room);
+      rooms.delete(room.code);
+      return;
+    }
+    if (before !== room.players.length && room.phase !== 'ended') {
+      clearTimeoutIfAny(room);
+      room.log.push('⚠️ 对方已离开');
+      room.phase = 'ended';
+      broadcastRoom(room);
+      return;
+    }
+    if (room.players.some((p) => !p.socketId && p.disconnectedAt)) {
+      scheduleDisconnectCleanup(room);
+    }
+  }, RECONNECT_GRACE_MS + 500);
+}
+
+function markPlayerConnected(room, player, socket) {
+  player.socketId = socket.id;
+  player.disconnectedAt = null;
+  player._disconnectNotice = false;
+  socket.join(room.code);
 }
 
 function useRoomConfig(room) {
@@ -257,6 +301,7 @@ function buildGomokuStandaloneView(room, forSocket) {
 
 function broadcastRoom(room) {
   for (const p of room.players) {
+    if (!p.socketId) continue;
     const view = room.mode === 'gomoku'
       ? buildGomokuStandaloneView(room, p.socketId)
       : buildPalaceView(room, p.socketId);
@@ -415,23 +460,25 @@ io.on('connection', (socket) => {
     const room = makeRoom(code, mode);
     useRoomConfig(room);
     if (room.mode === 'gomoku') {
-      room.players.push({
+      room.players.push(makePlayerSession({
         socketId: socket.id,
+        role: 'host',
         state: { name: (name || '').slice(0, 8) || '棋手' },
         score: 0,
-      });
+      }));
     } else {
       const validClassIds = (room.config.classes && room.config.classes.enabled) || ['default'];
       const cid = validClassIds.includes(classId) ? classId : 'default';
-      room.players.push({
+      room.players.push(makePlayerSession({
         socketId: socket.id,
+        role: 'host',
         state: game.newPlayerState((name || '').slice(0, 8), cid),
         action: null,
-      });
+      }));
     }
     rooms.set(code, room);
     socket.join(code);
-    socket.emit('joined', { code, role: 'host', mode: room.mode });
+    socket.emit('joined', { code, role: 'host', mode: room.mode, token: room.players[0].token });
     broadcastRoom(room);
   });
 
@@ -443,22 +490,24 @@ io.on('connection', (socket) => {
     if (room.phase === 'ended') { socket.emit('error_msg', '该局已结束'); return; }
     useRoomConfig(room);
     if (room.mode === 'gomoku') {
-      room.players.push({
+      room.players.push(makePlayerSession({
         socketId: socket.id,
+        role: 'guest',
         state: { name: (name || '').slice(0, 8) || '棋手' },
         score: 0,
-      });
+      }));
     } else {
       const validClassIds = (room.config.classes && room.config.classes.enabled) || ['default'];
       const cid = validClassIds.includes(classId) ? classId : 'default';
-      room.players.push({
+      room.players.push(makePlayerSession({
         socketId: socket.id,
+        role: 'guest',
         state: game.newPlayerState((name || '').slice(0, 8), cid),
         action: null,
-      });
+      }));
     }
     socket.join(code);
-    socket.emit('joined', { code, role: 'guest', mode: room.mode });
+    socket.emit('joined', { code, role: 'guest', mode: room.mode, token: room.players[room.players.length - 1].token });
     if (room.players.length === 2 && room.phase === 'waiting') {
       if (room.mode === 'gomoku') {
         room.log.push('🎬 棋逢对手，请先手落子');
@@ -472,6 +521,38 @@ io.on('connection', (socket) => {
         if (subLog.length) room.log.push(...subLog);
       }
     }
+    broadcastRoom(room);
+  });
+
+  socket.on('reconnect_room', ({ code, token } = {}) => {
+    code = (code || '').toUpperCase().trim();
+    token = (token || '').trim();
+    const room = rooms.get(code);
+    if (!room || !token) {
+      socket.emit('error_msg', '重连失败：房间不存在');
+      return;
+    }
+    const player = room.players.find((p) => p.token === token);
+    if (!player) {
+      socket.emit('error_msg', '重连失败：身份已失效');
+      return;
+    }
+    markPlayerConnected(room, player, socket);
+    if (room._disconnectTimer) {
+      clearTimeout(room._disconnectTimer);
+      room._disconnectTimer = null;
+    }
+    if (room.players.some((p) => !p.socketId && p.disconnectedAt)) {
+      scheduleDisconnectCleanup(room);
+    }
+    socket.emit('joined', {
+      code: room.code,
+      role: player.role || 'guest',
+      mode: room.mode,
+      token: player.token,
+      reconnected: true,
+    });
+    room.log.push(`🔌 ${player.state.name} 已重连`);
     broadcastRoom(room);
   });
 
@@ -648,15 +729,16 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const room = findRoomBySocket(socket.id);
     if (!room) return;
-    clearTimeoutIfAny(room);
-    room.players = room.players.filter((p) => p.socketId !== socket.id);
-    if (room.players.length === 0) {
-      rooms.delete(room.code);
-    } else {
-      room.log.push('⚠️ 对方已离开');
-      room.phase = 'ended';
+    const player = room.players.find((p) => p.socketId === socket.id);
+    if (!player) return;
+    player.socketId = null;
+    player.disconnectedAt = Date.now();
+    if (!player._disconnectNotice && room.players.some((p) => p.socketId)) {
+      room.log.push(`⚠️ ${player.state.name} 连接暂断，5分钟内回来会自动重连`);
+      player._disconnectNotice = true;
       broadcastRoom(room);
     }
+    scheduleDisconnectCleanup(room);
   });
 });
 
@@ -664,6 +746,9 @@ setInterval(() => {
   const now = Date.now();
   for (const [code, r] of rooms) {
     if (r.players.length === 0 && now - r.createdAt > 30 * 60 * 1000) {
+      rooms.delete(code);
+    } else if (r.players.length > 0 && r.players.every((p) => !p.socketId && p.disconnectedAt && now - p.disconnectedAt > RECONNECT_GRACE_MS)) {
+      clearTimeoutIfAny(r);
       rooms.delete(code);
     }
   }

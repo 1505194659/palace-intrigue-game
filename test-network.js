@@ -25,10 +25,12 @@ function assertEq(a, b, m) { assert(a === b, `${m} — 预期 ${b}, 实际 ${a}`
   const b = io(URL, { transports: ['websocket'] });
   let aState = null, bState = null;
   let roomCode = null;
+  let bToken = null;
   const aErrors = [];
   const bErrors = [];
 
   a.on('joined', ({ code }) => { roomCode = code; });
+  b.on('joined', ({ token }) => { bToken = token || bToken; });
   a.on('state', (s) => { aState = s; });
   b.on('state', (s) => { bState = s; });
   a.on('error_msg', (m) => aErrors.push(m));
@@ -110,12 +112,22 @@ function assertEq(a, b, m) { assert(a === b, `${m} — 预期 ${b}, 实际 ${a}`
   await delay(200);
   assert(aErrors.length > beforeErrCount, '非法 try_child 被服务端拒绝');
 
-  // 7. 断线处理
+  // 7. 断线重连处理
   b.disconnect();
   await delay(300);
-  assertEq(aState.phase, 'ended', 'B 断线后 A 进入 ended');
-  assert(aState.log.some((l) => l.includes('对方已离开')), '日志含"对方已离开"');
+  assert(aState.phase !== 'ended', 'B 短暂断线后 A 不会直接结束房间');
+  assert(aState.log.some((l) => l.includes('连接暂断')), '日志含"连接暂断"');
 
+  const b2 = io(URL, { transports: ['websocket'] });
+  b2.on('state', (s) => { bState = s; });
+  b2.on('error_msg', (m) => bErrors.push(m));
+  await new Promise((r) => b2.on('connect', r));
+  b2.emit('reconnect_room', { code: roomCode, token: bToken });
+  await delay(300);
+  assert(bState && bState.code === roomCode, 'B 使用 token 成功重连回原房间');
+  assert(aState.log.some((l) => l.includes('已重连')), '日志含"已重连"');
+
+  b2.disconnect();
   a.disconnect();
 
   console.log('\n' + '='.repeat(60));

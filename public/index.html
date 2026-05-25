@@ -432,9 +432,14 @@
     display:block; width:100%; margin:0 auto;
     background:#d9b67a; border-radius:4px; touch-action:manipulation; cursor:crosshair;
   }
+  .board-scroll {
+    width:100%; max-width:100%; overflow:auto; margin:0 auto;
+    -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+  }
+  .board-scroll .board-canvas { margin:0 auto; max-width:none; }
   /* 全屏决斗里的画布：尽量大 */
   .duel-panel.fullscreen .board-canvas {
-    max-width: 100%;
+    max-width: none;
     flex: 1 1 auto;
     min-height: 0;
   }
@@ -456,6 +461,20 @@
   @media (max-width:380px){
     .rps-btn { min-height:96px; font-size:38px; padding:16px 4px; }
     .rps-btn .nm { font-size:12px; }
+  }
+  @media (max-width:700px){
+    .duel-overlay { align-items:flex-start; }
+    .duel-panel.fullscreen {
+      width:calc(100vw - 12px);
+      max-width:calc(100vw - 12px);
+      min-height:calc(100dvh - 12px);
+      margin:6px;
+      padding:8px;
+    }
+    #screen-gomoku .board-scroll {
+      margin-left:-6px; margin-right:-6px;
+      width:calc(100% + 12px); max-width:calc(100% + 12px);
+    }
   }
 
   /* Guess UI */
@@ -834,7 +853,7 @@
       <span><span class="stone-icon" id="g-cur-stone"></span><span id="g-cur-name">轮到</span></span>
       <span class="timer" id="g-timer">--</span>
     </div>
-    <canvas id="g-canvas" class="board-canvas"></canvas>
+    <div class="board-scroll"><canvas id="g-canvas" class="board-canvas"></canvas></div>
     <div class="panel" style="margin-top:10px; padding:8px 10px;">
       <div style="font-size:13px; color:var(--red-deep); letter-spacing:0.2em; margin-bottom:6px;">棋 谱</div>
       <div class="log" id="g-log" style="max-height:120px;"></div>
@@ -906,6 +925,24 @@ let selectedMode = 'palace';
 let selectedClass = 'default';
 let timerHandle = null;
 let cardDescById = {};
+let currentRoomToken = null;
+let currentRoomRole = null;
+const ROOM_SESSION_KEY = 'palace_room_session_v1';
+
+function loadRoomSession() {
+  try { return JSON.parse(sessionStorage.getItem(ROOM_SESSION_KEY) || 'null'); }
+  catch { return null; }
+}
+function saveRoomSession(data) {
+  try { sessionStorage.setItem(ROOM_SESSION_KEY, JSON.stringify(data)); } catch (_) {}
+}
+function tryReconnectRoom() {
+  const saved = loadRoomSession();
+  const code = currentRoomCode || (saved && saved.code);
+  const token = currentRoomToken || (saved && saved.token);
+  if (!code || !token || !socket.connected) return;
+  socket.emit('reconnect_room', { code, token });
+}
 
 fetch('/api/meta').then((r) => r.json()).then(async (j) => {
   if (!j.ok) return;
@@ -998,10 +1035,32 @@ $('btn-join').onclick = () => {
   if (!code) { showToast('请输入房间号'); return; }
   socket.emit('join_room', { code, name, classId: selectedClass });
 };
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {}
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  ta.style.top = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+  ta.remove();
+  return ok;
+}
 $('btn-copy').onclick = async () => {
   if (!currentRoomCode) return;
-  try { await navigator.clipboard.writeText(currentRoomCode); showToast('房间号已复制'); }
-  catch { showToast('复制失败：' + currentRoomCode); }
+  const ok = await copyText(currentRoomCode);
+  showToast(ok ? '房间号已复制' : '复制失败，请长按房间号复制：' + currentRoomCode);
 };
 
 // 行动按钮渲染
@@ -1282,7 +1341,7 @@ function showDuelOverlay(d) {
   const content = $('duel-content');
   const hint = $('duel-hint');
   if (d.duelId === 'gomoku') {
-    content.innerHTML = `<canvas id="d-canvas" class="board-canvas"></canvas>`;
+    content.innerHTML = `<div class="board-scroll"><canvas id="d-canvas" class="board-canvas"></canvas></div>`;
     drawBoard('d-canvas', d, { canPlay: !d.winner && d.yourTurn });
     hint.innerHTML = '连五子者陷害成功；超时即判负';
   } else if (d.duelId === 'rps') {
@@ -1389,6 +1448,8 @@ function drawBoard(canvasId, sub, opts) {
   // 取 canvas 实际宽度，但也限制在父容器高度内（保正方）
   const parent = canvas.parentElement;
   const fullscreen = canvas.closest('.duel-panel.fullscreen');
+  const isMobile = window.matchMedia('(max-width:700px)').matches;
+  const minTouchBoard = isMobile && N >= 15 ? 520 : 0;
   let cssW;
   if (fullscreen) {
     // 全屏决斗：用容器宽度和可用高度的较小值，保持正方
@@ -1396,9 +1457,9 @@ function drawBoard(canvasId, sub, opts) {
     const availW = (parent && parent.clientWidth) || window.innerWidth;
     // 减去棋盘上面/下面其他元素占的空间（约 160px）
     const usableH = Math.max(280, window.innerHeight - 220);
-    cssW = Math.min(availW, usableH);
+    cssW = Math.max(minTouchBoard, Math.min(availW, usableH));
   } else {
-    cssW = Math.min(canvas.clientWidth || 320, 560);
+    cssW = Math.max(minTouchBoard, Math.min(canvas.clientWidth || 320, 560));
   }
   const dpr = window.devicePixelRatio || 1;
   canvas.width = cssW * dpr;
@@ -1498,10 +1559,22 @@ function playSound(kind) {
 }
 
 // ============== Socket 事件 ==============
-socket.on('joined', ({ code, role, mode }) => {
+socket.on('connect', () => {
+  tryReconnectRoom();
+});
+
+socket.on('joined', ({ code, role, mode, token, reconnected }) => {
   currentRoomCode = code;
+  currentRoomToken = token || currentRoomToken;
+  currentRoomRole = role || currentRoomRole;
+  if (currentRoomToken) {
+    saveRoomSession({ code, token: currentRoomToken, role: currentRoomRole, mode });
+  }
   $('room-code').textContent = code;
-  if (role === 'host') showScreen('lobby');
+  if (reconnected) {
+    showToast('已重连房间');
+    showScreen(mode === 'gomoku' ? 'gomoku' : 'game');
+  } else if (role === 'host') showScreen('lobby');
   else showScreen(mode === 'gomoku' ? 'gomoku' : 'game');
 });
 
@@ -1514,7 +1587,7 @@ socket.on('state', (s) => {
 });
 
 socket.on('error_msg', (msg) => showToast(msg));
-socket.on('disconnect', () => showToast('连接断开，请刷新重试'));
+socket.on('disconnect', () => showToast('连接断开，正在重连…'));
 
 $('btn-rematch').onclick = () => {
   myChoice = null; lastLogTotal = -1;
